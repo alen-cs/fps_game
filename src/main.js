@@ -103,7 +103,20 @@ let canJump = false; // 是否允许跳跃
 // 【Debug 1 修复】预先缓存体力条 DOM 节点，杜绝主循环查找
 const uiStaminaFill = document.getElementById('stamina-fill');
 const uiInst = document.getElementById('instructions');
+// filepath: src/main.js (局部替换)
 
+// 事件监听器：按键按下设为 true，松开设为 false
+document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    
+    // 【新增】监听 R 键换弹
+    if (e.code === 'KeyR' && controls.isLocked) {
+        weapon.reload();
+    }
+});
+document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+// ... 后续代码保持不变
 // 事件监听器：按键按下设为 true，松开设为 false
 document.addEventListener('keydown', (e) => keys[e.code] = true);
 document.addEventListener('keyup', (e) => keys[e.code] = false);
