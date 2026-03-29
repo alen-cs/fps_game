@@ -14,47 +14,37 @@ export class Weapon {
 
         this.weaponGroup = new THREE.Group();
         
-        // 1. 枪身主干 (深灰色金属)
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.3, metalness: 0.9 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.5), bodyMat);
 
-        // 2. 枪管组件 (双层磁轨结构)
         const railMat = new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.5, metalness: 0.8 });
         const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.4), railMat);
         leftRail.position.set(0.04, 0.02, -0.35);
         const rightRail = leftRail.clone();
         rightRail.position.x = -0.04;
 
-        // 3. 枪管内部发光核心 (圆柱体)
         const coreMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
         const barrelCore = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 8), coreMat);
-        barrelCore.rotation.x = Math.PI / 2; // 旋转让圆柱横放
+        barrelCore.rotation.x = Math.PI / 2; 
         barrelCore.position.set(0, 0.02, -0.35);
 
-        // 4. 瞄准镜组件 (底座 + 全息玻璃)
         const sightBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.08), bodyMat);
         sightBase.position.set(0, 0.1, 0.05);
         
-        const glassMat = new THREE.MeshBasicMaterial({ 
-            color: 0x00ff88, transparent: true, opacity: 0.4, side: THREE.DoubleSide 
-        });
+        const glassMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
         const sightGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.05), glassMat);
         sightGlass.position.set(0, 0.14, 0.05);
 
-        // 5. 底部能量弹匣 (发光内仓 + 金属外壳)
         const mag = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 8), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 }));
         mag.position.set(0, -0.12, 0.1);
         const magShell = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.08), bodyMat);
         magShell.position.set(0, -0.12, 0.1);
 
-        // 将所有零件组装到枪械大组中
         this.weaponGroup.add(body, leftRail, rightRail, barrelCore, sightBase, sightGlass, mag, magShell);
         
-        // 调整持枪位置
         this.basePosition = new THREE.Vector3(0.25, -0.2, -0.5);
         this.weaponGroup.position.copy(this.basePosition);
         this.weaponGroup.rotation.y = -0.05; 
-        
         this.camera.add(this.weaponGroup);
 
         this.bullets = [];
@@ -86,16 +76,14 @@ export class Weapon {
         this.ammo--;
         this.updateUI();
         
-        // 开火后坐力动画 (视觉冲击力更强)
         this.weaponGroup.position.z += 0.12;
         this.weaponGroup.position.y += 0.02;
-        // 增加枪管上跳角度
         this.weaponGroup.rotation.x = 0.05;
         setTimeout(() => this.weaponGroup.rotation.x = 0, 50);
 
         raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
         const intersects = raycaster.intersectObjects(this.scene.children, true)
-            .filter(i => !this.bullets.some(b => b.mesh === i.object) && i.object !== this.weaponGroup);
+            .filter(i => !this.bullets.some(b => b.mesh === i.object) && !this.weaponGroup.children.includes(i.object));
 
         let targetPoint = new THREE.Vector3();
         let hitObject = null;
@@ -124,7 +112,6 @@ export class Weapon {
         const el = document.getElementById('ammo-info');
         if (el) el.innerText = "RELOADING...";
         
-        // 换弹时的简单枪支下压动画
         this.weaponGroup.position.y -= 0.2;
         this.weaponGroup.rotation.x = -0.2;
 
@@ -135,8 +122,6 @@ export class Weapon {
             this.maxAmmo -= toReload;
             this.isReloading = false; 
             this.updateUI();
-            
-            // 恢复枪械位置
             this.weaponGroup.rotation.x = 0;
         }, 1200);
     }
