@@ -12,13 +12,15 @@ export class Boss extends EnemyBase {
         });
     }
 
+    // Boss 重写受击逻辑：免疫击退
     takeDamage(amount, hitDir) {
         if (this.state === 'DEAD') return;
         this.health -= amount;
         
-        this.mesh.material.color.setHex(0xffffff);
+        // 使用核心材质实例闪白
+        this.coreMatInstance.color.setHex(0xffffff);
         setTimeout(() => { 
-            if(this.state !== 'DEAD') this.mesh.material.color.setHex(this.baseColor); 
+            if(this.state !== 'DEAD') this.coreMatInstance.color.setHex(this.baseColor); 
         }, 100);
 
         if (this.health <= 0) this.die();
