@@ -4,48 +4,37 @@ export class ParticleSystem {
     constructor(scene) {
         this.scene = scene;
         this.particles = [];
-        
-        // 粒子池
-        const geo = new THREE.BoxGeometry(0.05, 0.05, 0.05);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        
-        for(let i=0; i<50; i++) {
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.visible = false;
-            this.scene.add(mesh);
-            this.particles.push({ mesh: mesh, active: false, velocity: new THREE.Vector3(), life: 0 });
-        }
+        this.geometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+        this.material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
     }
 
-    spawnImpact(point, normal) {
-        let count = 0;
-        for(let p of this.particles) {
-            if(!p.active) {
-                p.active = true;
-                p.life = 0.5;
-                p.mesh.position.copy(point);
-                p.mesh.visible = true;
-                
-                // 随机向法线方向喷射
-                p.velocity.copy(normal).multiplyScalar(5);
-                p.velocity.x += (Math.random() - 0.5) * 4;
-                p.velocity.y += (Math.random() - 0.5) * 4;
-                p.velocity.z += (Math.random() - 0.5) * 4;
-                
-                count++;
-                if(count >= 5) break; // 每次撞击产生5个粒子
-            }
+    spawnImpact(position, normal) {
+        for(let i = 0; i < 6; i++) {
+            const mesh = new THREE.Mesh(this.geometry, this.material);
+            mesh.position.copy(position);
+            
+            // 简单的粒子飞溅算法
+            const velocity = new THREE.Vector3(
+                normal.x + (Math.random() - 0.5) * 2,
+                normal.y + (Math.random() - 0.5) * 2,
+                normal.z + (Math.random() - 0.5) * 2
+            ).normalize().multiplyScalar(5 + Math.random() * 5);
+            
+            this.scene.add(mesh);
+            this.particles.push({ mesh, velocity, life: 1.0 });
         }
     }
 
     update(delta) {
-        this.particles.forEach(p => {
-            if(p.active) {
-                p.mesh.position.addScaledVector(p.velocity, delta);
-                p.velocity.y -= delta * 9.8; // 重力
-                p.life -= delta;
-                if(p.life <= 0) { p.active = false; p.mesh.visible = false; }
+        for(let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.life -= delta * 3; 
+            p.mesh.position.addScaledVector(p.velocity, delta);
+            
+            if (p.life <= 0) {
+                this.scene.remove(p.mesh);
+                this.particles.splice(i, 1);
             }
-        });
+        }
     }
 }
