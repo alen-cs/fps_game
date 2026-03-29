@@ -8,109 +8,59 @@ export class Weapon {
 
         this.ammo = 30;
         this.maxAmmo = 120;
-        this.fireRate = 0.12; 
+        this.fireRate = 0.1; // 略微加快射速
         this.lastFireTime = 0;
         this.isReloading = false;
 
-        // --- 1. 构建枪械模型 ---
+        // 武器模型
         this.weaponGroup = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.6), new THREE.MeshBasicMaterial({ color: 0x444444 }));
+        this.barrel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+        this.barrel.position.set(0, 0.05, -0.4);
+        this.weaponGroup.add(body, this.barrel);
         
-        const bodyGeo = new THREE.BoxGeometry(0.15, 0.2, 0.6);
-        const bodyMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        
-        const barrelGeo = new THREE.BoxGeometry(0.05, 0.05, 0.4);
-        const barrelMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
-        this.barrel = new THREE.Mesh(barrelGeo, barrelMat);
-        this.barrel.position.set(0, 0.05, -0.4); 
-
-        const sightGeo = new THREE.BoxGeometry(0.02, 0.06, 0.02);
-        const sightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const sight = new THREE.Mesh(sightGeo, sightMat);
-        sight.position.set(0, 0.13, -0.1);
-
-        this.weaponGroup.add(body);
-        this.weaponGroup.add(this.barrel);
-        this.weaponGroup.add(sight);
-
         this.basePosition = new THREE.Vector3(0.35, -0.35, -0.8);
         this.weaponGroup.position.copy(this.basePosition);
-        this.camera.add(this.weaponGroup); 
+        this.camera.add(this.weaponGroup);
 
-        this.swayTime = 0;
-
-        // --- 2. 枪口火焰 ---
-        const flashGeo = new THREE.PlaneGeometry(0.3, 0.3);
-        const flashMat = new THREE.MeshBasicMaterial({ 
-            color: 0xffaa00, transparent: true, opacity: 0, 
-            side: THREE.DoubleSide, depthWrite: false
-        });
-        this.muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
-        this.muzzleFlash.position.set(0, 0.05, -0.65); 
-        this.muzzleFlash.rotation.y = Math.PI / 2;
-        this.weaponGroup.add(this.muzzleFlash);
-
-        // --- 3. 实体子弹池 ---
+        // 实体子弹池
         this.bullets = [];
-        const bulletGeo = new THREE.BoxGeometry(0.04, 0.04, 0.8);
-        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffea00 }); 
-        for (let i = 0; i < 15; i++) {
+        const bulletGeo = new THREE.BoxGeometry(0.05, 0.05, 1.0); // 拉长子弹视觉效果
+        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+        for (let i = 0; i < 20; i++) {
             const mesh = new THREE.Mesh(bulletGeo, bulletMat);
             mesh.visible = false;
             this.scene.add(mesh);
             this.bullets.push({ mesh: mesh, active: false, velocity: new THREE.Vector3(), life: 0 });
         }
 
-        // --- 4. 击中火花特效池 ---
-        this.hitFlashes = [];
-        const hitFlashGeo = new THREE.SphereGeometry(0.15, 8, 8);
-        const hitFlashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
-        for(let i = 0; i < 10; i++) {
-            let mesh = new THREE.Mesh(hitFlashGeo, hitFlashMat.clone());
-            mesh.visible = false;
-            this.scene.add(mesh);
-            this.hitFlashes.push({ mesh: mesh, life: 0 });
-        }
+        // 枪口火焰
+        this.muzzleFlash = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.4, 0.4),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0, side: THREE.DoubleSide })
+        );
+        this.muzzleFlash.position.set(0, 0.05, -0.7);
+        this.weaponGroup.add(this.muzzleFlash);
 
-        this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
+        this._updateAmmoUI();
     }
 
-    _updateAmmoUI(text) {
-        let ammoDiv = document.getElementById('ammo-info');
-        if (!ammoDiv) {
-            ammoDiv = document.createElement('div');
-            ammoDiv.id = 'ammo-info';
-            ammoDiv.style.position = 'absolute';
-            ammoDiv.style.bottom = '20px';
-            ammoDiv.style.right = '30px';
-            ammoDiv.style.fontSize = '32px';
-            ammoDiv.style.fontWeight = 'bold';
-            ammoDiv.style.fontFamily = 'monospace';
-            ammoDiv.style.color = '#fff';
-            ammoDiv.style.zIndex = '10';
-            document.body.appendChild(ammoDiv);
-        }
-        ammoDiv.innerText = `AMMO: ${text}`;
+    _updateAmmoUI() {
+        const ammoDiv = document.getElementById('ammo-info') || this._createAmmoUI();
+        ammoDiv.innerText = `AMMO: ${this.ammo} / ${this.maxAmmo}`;
     }
 
-    update(delta, isMoving, isSprinting) {
-        if (isMoving && !this.isReloading) {
-            const speed = isSprinting ? 14 : 8;
-            this.swayTime += delta * speed;
-            this.weaponGroup.position.x = this.basePosition.x + Math.sin(this.swayTime) * 0.015;
-            this.weaponGroup.position.y = this.basePosition.y + Math.abs(Math.cos(this.swayTime)) * 0.02;
-        } else {
-            this.weaponGroup.position.lerp(this.basePosition, delta * 5);
-        }
+    _createAmmoUI() {
+        const div = document.createElement('div');
+        div.id = 'ammo-info';
+        div.style.cssText = 'position:absolute; bottom:20px; right:30px; font-size:32px; color:#fff; font-family:monospace; z-index:100;';
+        document.body.appendChild(div);
+        return div;
+    }
 
-        this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, 0, delta * 15);
-        this.weaponGroup.position.z = THREE.MathUtils.lerp(this.weaponGroup.position.z, this.basePosition.z, delta * 15);
-
-        if (this.muzzleFlash.material.opacity > 0) {
-            this.muzzleFlash.material.opacity -= delta * 15;
-        }
-
-        for (let b of this.bullets) {
+    update(delta) {
+        // 更新子弹位置
+        this.bullets.forEach(b => {
             if (b.active) {
                 b.mesh.position.addScaledVector(b.velocity, delta);
                 b.life -= delta;
@@ -119,97 +69,66 @@ export class Weapon {
                     b.mesh.visible = false;
                 }
             }
-        }
-
-        for (let f of this.hitFlashes) {
-            if (f.life > 0) {
-                f.life -= delta;
-                f.mesh.scale.addScalar(delta * 15); 
-                f.mesh.material.opacity = f.life * 5; 
-                if (f.life <= 0) f.mesh.visible = false;
-            }
-        }
+        });
+        if (this.muzzleFlash.material.opacity > 0) this.muzzleFlash.material.opacity -= delta * 15;
     }
 
     fire(raycaster) {
-        if (this.ammo <= 0 || this.isReloading) {
-            if (this.ammo <= 0) this.reload(); 
-            return null;
-        }
-        
+        if (this.ammo <= 0 || this.isReloading) return null;
         const now = performance.now() / 1000;
-        if (now - this.lastFireTime < this.fireRate) return null; 
-        this.lastFireTime = now;
-
-        this.ammo--;
-        this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
-
-        this.weaponGroup.rotation.x += 0.05 + Math.random() * 0.02; 
-        this.weaponGroup.position.z += 0.1; 
-        this.muzzleFlash.material.opacity = 1;
-        this.muzzleFlash.rotation.z = Math.random() * Math.PI; 
-
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-        const intersects = raycaster.intersectObjects(this.scene.children, true);
+        if (now - this.lastFireTime < this.fireRate) return null;
         
-        let hitPoint = null;
-        for (let i = 0; i < intersects.length; i++) {
-            const obj = intersects[i].object;
-            if (obj !== this.weaponGroup && !this.bullets.some(b => b.mesh === obj) && obj !== this.muzzleFlash) {
-                hitPoint = intersects[i].point;
-                const normal = intersects[i].face ? intersects[i].face.normal : new THREE.Vector3(0,1,0);
-                if(this.particles) this.particles.spawnImpact(hitPoint, normal); 
-                break;
-            }
+        this.lastFireTime = now;
+        this.ammo--;
+        this._updateAmmoUI();
+
+        // 后坐力反馈
+        this.weaponGroup.position.z += 0.1;
+        this.muzzleFlash.material.opacity = 1;
+
+        // --- 核心优化：弹道目标计算 ---
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+        // 过滤掉子弹本身和枪口火焰，避免自撞
+        const intersects = raycaster.intersectObjects(this.scene.children, true)
+            .filter(i => !this.bullets.some(b => b.mesh === i.object) && i.object !== this.muzzleFlash);
+
+        let targetPoint = new THREE.Vector3();
+        let hitObject = null;
+
+        if (intersects.length > 0) {
+            targetPoint.copy(intersects[0].point);
+            hitObject = intersects[0].object;
+            // 触发撞击粒子
+            if (this.particles) this.particles.spawnImpact(targetPoint, intersects[0].face.normal);
+        } else {
+            // 如果没打中物体，目标点设在前方100米处
+            raycaster.ray.at(100, targetPoint);
         }
 
-        const targetPos = hitPoint ? hitPoint : raycaster.ray.at(100, new THREE.Vector3());
-
-        let bullet = this.bullets.find(b => !b.active);
+        // 发射视觉子弹
+        const bullet = this.bullets.find(b => !b.active);
         if (bullet) {
             bullet.active = true;
-            bullet.life = 1.0; 
+            bullet.life = 1.0;
             bullet.mesh.visible = true;
-            
             this.barrel.getWorldPosition(bullet.mesh.position);
-            bullet.mesh.lookAt(targetPos); 
-            bullet.velocity.subVectors(targetPos, bullet.mesh.position).normalize().multiplyScalar(200); 
+            bullet.mesh.lookAt(targetPoint);
+            bullet.velocity.subVectors(targetPoint, bullet.mesh.position).normalize().multiplyScalar(250); // 超高速飞行
         }
 
-        if (hitPoint) {
-            let flash = this.hitFlashes.find(f => f.life <= 0);
-            if (flash) {
-                flash.mesh.position.copy(hitPoint);
-                flash.mesh.scale.set(1, 1, 1);
-                flash.mesh.material.opacity = 1;
-                flash.mesh.visible = true;
-                flash.life = 0.15; 
-            }
-        }
-
-        return { point: hitPoint }; 
+        return { point: targetPoint, object: hitObject };
     }
 
     reload() {
         if (this.isReloading || this.ammo === 30 || this.maxAmmo <= 0) return;
         this.isReloading = true;
-        this._updateAmmoUI(`RELOADING...`);
-
-        let reloadTicks = 0;
-        const reloadAnim = setInterval(() => {
-            this.weaponGroup.rotation.x -= 0.05;
-            reloadTicks++;
-            if (reloadTicks > 15) clearInterval(reloadAnim);
-        }, 16);
-
         setTimeout(() => {
             const needed = 30 - this.ammo;
             const toReload = Math.min(needed, this.maxAmmo);
             this.ammo += toReload;
             this.maxAmmo -= toReload;
             this.isReloading = false;
-            this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
-            this.weaponGroup.rotation.x = 0;
-        }, 1500);
+            this._updateAmmoUI();
+        }, 1200);
     }
 }
