@@ -9,7 +9,6 @@ import { Enemy2 } from './Enemy2.js';
 import { Boss } from './Boss.js';
 import { Pickup } from './Pickups.js';
 
-// --- 全局地形高度计算公式 ---
 export function getTerrainHeight(x, z) {
     const distFromCenter = Math.sqrt(x * x + z * z);
     if (distFromCenter > 40) {
@@ -23,6 +22,8 @@ scene.background = new THREE.Color(0x050510);
 scene.fog = new THREE.FogExp2(0x050510, 0.025);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+scene.add(camera); // 关键修复：确保相机加入场景，否则挂载在相机上的武器可能无法渲染
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -38,7 +39,6 @@ scene.add(dirLight);
 
 const terrainGeo = new THREE.PlaneGeometry(300, 300, 80, 80);
 const posAttr = terrainGeo.attributes.position;
-
 for (let i = 0; i < posAttr.count; i++) {
     const vx = posAttr.getX(i);
     const vy = posAttr.getY(i);
@@ -65,9 +65,13 @@ world.addBody(playerBody);
 
 const controls = new PointerLockControls(camera, document.body);
 const instructions = document.getElementById('instructions');
-instructions.addEventListener('click', () => controls.lock());
-controls.addEventListener('lock', () => instructions.style.display = 'none');
-controls.addEventListener('unlock', () => instructions.style.display = 'flex');
+if (instructions) {
+    instructions.addEventListener('click', () => controls.lock());
+    controls.addEventListener('lock', () => instructions.style.display = 'none');
+    controls.addEventListener('unlock', () => instructions.style.display = 'flex');
+} else {
+    document.body.addEventListener('click', () => controls.lock()); // 防崩溃容错
+}
 
 let keys = {};
 document.addEventListener('keydown', (e) => { keys[e.code] = true; if(e.code === 'KeyR') weapon.reload(); });
@@ -95,7 +99,6 @@ function spawnWave() {
         const radius = 30 + Math.random() * 10;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        
         const startY = getTerrainHeight(x, z) + 5; 
 
         if (currentWave >= 5 && i === 0) {
@@ -111,10 +114,149 @@ function spawnWave() {
     const pz = (Math.random()-0.5)*80;
     const py = getTerrainHeight(px, pz) + 1;
     pickups.push(new Pickup(scene, Math.random() > 0.5 ? 'HEALTH' : 'AMMO', new THREE.Vector3(px, py, pz)));
-    
     updateWaveUI();
 }
 
 function updateWaveUI() {
     const el = document.getElementById('wave-info');
-    if (el) el.
+    if (el) el.innerText = `WAVE: ${currentWave} | ENEMIES: ${enemies.length}`;
+}
+spawnWave();
+
+document.addEventListener('mousedown', () => {
+    if (controls.isLocked) {
+        const result = weapon.fire(raycaster);
+        if (result) {
+            const { point, object } = result;
+            let hitAny = false;
+            
+            enemies.forEach(enemy => {
+                if (object === enemy.mesh || enemy.mesh.position.distanceTo(point) < 2.5) {
+                    const wasAlive = enemy.health > 0; 
+                    enemy.takeDamage(40);
+                    if (wasAlive && enemy.health <= 0) {
+                        playerHealth = Math.min(100, playerHealth + 1); 
+                        weapon.maxAmmo += 1; 
+                        weapon.updateUI();
+                        const hFill = document.getElementById('health-fill');
+                        if (hFill) hFill.style.width = playerHealth + '%';
+                    }
+                    hitAny = true;
+                }
+            });
+            
+            if (hitAny) {
+                const marker = document.getElementById('hit-marker');
+                if (marker) { marker.style.opacity = '1'; setTimeout(() => marker.style.opacity = '0', 100); }
+            }
+        }
+    }
+});
+
+const clock = new THREE.Clock();
+const moveDir = new THREE.Vector3();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.1);
+
+    if (controls.isLocked) {
+        world.step(1/60, delta, 3);
+
+        const playerGroundY = getTerrainHeight(playerBody.position.x, playerBody.position.z);
+        let isOnGround = false;
+        if (playerBody.position.y <= playerGroundY + 0.61) {
+            playerBody.position.y = playerGroundY + 0.6; 
+            if (playerBody.velocity.y < 0) playerBody.velocity.y = 0; 
+            isOnGround = true; 
+        }
+
+        if (dashCooldown > 0) dashCooldown -= delta;
+        if (dashDuration > 0) {
+            dashDuration -= delta;
+            if (dashDuration <= 0) isDashing = false;
+        }
+
+        moveDir.set(0, 0, 0);
+        if (keys['KeyW']) moveDir.z -= 1;
+        if (keys['KeyS']) moveDir.z += 1;
+        if (keys['KeyA']) moveDir.x -= 1;
+        if (keys['KeyD']) moveDir.x += 1;
+
+        if (keys['Space'] && isOnGround) {
+            playerBody.velocity.y = 15; 
+            isOnGround = false; 
+        }
+
+        if (keys['ShiftLeft'] && !isDashing && dashCooldown <= 0 && moveDir.lengthSq() > 0) {
+            isDashing = true; dashDuration = 0.2; dashCooldown = 1.0;
+        }
+
+        const currentSpeed = isDashing ? DASH_SPEED : NORMAL_SPEED;
+        if (moveDir.lengthSq() > 0) {
+            moveDir.normalize().multiplyScalar(currentSpeed).applyQuaternion(camera.quaternion);
+            playerBody.velocity.x = moveDir.x;
+            playerBody.velocity.z = moveDir.z;
+        } else if (!isDashing) {
+            playerBody.velocity.x = 0;
+            playerBody.velocity.z = 0;
+        }
+
+        camera.position.set(playerBody.position.x, playerBody.position.y + 0.6, playerBody.position.z);
+
+        weapon.update(delta);
+        particles.update(delta);
+        
+        // 关键修复：强制转换为 Three.js 向量，防止 distanceTo 崩溃
+        const playerPosThree = new THREE.Vector3(playerBody.position.x, playerBody.position.y, playerBody.position.z);
+
+        enemies.forEach(enemy => {
+            const eGroundY = getTerrainHeight(enemy.body.position.x, enemy.body.position.z);
+            if (enemy.body.position.y <= eGroundY + enemy.halfHeight) {
+                enemy.body.position.y = eGroundY + enemy.halfHeight;
+                if (enemy.body.velocity.y < 0) enemy.body.velocity.y = 0;
+            }
+
+            enemy.update(delta, playerPosThree); // 传递安全的 THREE.Vector3
+            
+            if (enemy.mesh.position.distanceTo(playerPosThree) < 3) {
+                playerHealth = Math.max(0, playerHealth - delta * 15);
+                const hFill = document.getElementById('health-fill');
+                if (hFill) hFill.style.width = playerHealth + '%';
+            }
+        });
+
+        pickups.forEach(p => {
+            p.update(delta);
+            if (p.group.position.distanceTo(playerPosThree) < 2) {
+                p.isCollected = true;
+                scene.remove(p.group);
+                if (p.type === 'HEALTH') playerHealth = Math.min(100, playerHealth + 30);
+                if (p.type === 'AMMO') weapon.maxAmmo += 60;
+                weapon.updateUI();
+                const hFill = document.getElementById('health-fill');
+                if (hFill) hFill.style.width = playerHealth + '%';
+            }
+        });
+
+        enemies = enemies.filter(e => !e.isDestroyed);
+        pickups = pickups.filter(p => !p.isCollected);
+
+        if (enemies.length === 0) { currentWave++; spawnWave(); }
+        if (playerHealth <= 0) {
+            alert("游戏结束！");
+            keys = {}; // 防止按键粘滞卡死
+            location.reload(); 
+        }
+        updateWaveUI();
+    }
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
