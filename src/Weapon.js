@@ -41,7 +41,7 @@ export class Weapon {
         
         this.camera.add(this.weaponGroup);
 
-        // 子弹池保持不变
+        // 子弹池
         this.bullets = [];
         for (let i = 0; i < 15; i++) {
             const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.8), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
@@ -104,7 +104,8 @@ export class Weapon {
     reload() {
         if (this.isReloading || this.ammo === 30 || this.maxAmmo <= 0) return;
         this.isReloading = true;
-        document.getElementById('ammo-info').innerText = "RELOADING...";
+        const el = document.getElementById('ammo-info');
+        if (el) el.innerText = "RELOADING...";
         setTimeout(() => {
             const needed = 30 - this.ammo;
             const toReload = Math.min(needed, this.maxAmmo);
