@@ -1,6 +1,14 @@
-// ... 其他 import 保持不变 ...
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { Weapon } from './Weapon.js';
+// ... 其余 Enemy/Particle 引入保持不变
 
-// 在 mousedown 事件中应用新的伤害逻辑
+console.log("%c 🚀 游戏逻辑 v1.2.0 已加载：弹道与伤害修正生效", "color: #00ff00; font-weight: bold;");
+
+// ... 初始化 Scene/World/Camera 逻辑保持不变 ...
+
+// 核心：点击开火逻辑
 document.addEventListener('mousedown', () => {
     if (controls.isLocked) {
         const result = weapon.fire(raycaster);
@@ -8,59 +16,43 @@ document.addEventListener('mousedown', () => {
             const { point, object } = result;
             let hitTarget = null;
 
-            // 1. 尝试直接通过碰撞的对象寻找敌人
+            // 1. 优先检测射线是否直击敌人
             enemies.forEach(enemy => {
-                // 检查被击中的对象是否属于该敌人的 group 或 mesh
-                if (object && (object === enemy.mesh || (enemy.group && enemy.group.attach && enemy.group.children.includes(object)))) {
+                const enemyMesh = enemy.group || enemy.mesh;
+                if (object && (object === enemy.mesh || (enemyMesh.children && enemyMesh.children.includes(object)))) {
                     hitTarget = enemy;
                 }
             });
 
-            // 2. 备选方案：通过距离判定（针对复杂模型或判定失败补偿）
+            // 2. 补偿检测：如果击中点在敌人中心附近 (圆柱体判定)
             if (!hitTarget && point) {
                 enemies.forEach(enemy => {
                     const enemyPos = (enemy.group && enemy.group.position) || enemy.mesh.position;
-                    const distSq = enemyPos.distanceToSquared(point);
-                    // 如果击中点距离敌人中心小于 2.5 米（圆柱体判定范围）
-                    if (distSq < 6.25) { 
+                    const horizontalDist = Math.sqrt(Math.pow(enemyPos.x - point.x, 2) + Math.pow(enemyPos.z - point.z, 2));
+                    const verticalDist = Math.abs(enemyPos.y - point.y);
+                    
+                    if (horizontalDist < 1.8 && verticalDist < 3.0) { 
                         hitTarget = enemy;
                     }
                 });
             }
 
-            // 3. 应用伤害
+            // 3. 结算伤害
             if (hitTarget) {
-                const DAMAGE_VALUE = 60; // 伤害值
-                console.log("HIT ENEMY!", hitTarget); // 调试日志，按 F12 查看
+                const DAMAGE = 60; 
+                console.log("HIT!", hitTarget);
+                
+                if (hitTarget.takeDamage) hitTarget.takeDamage(DAMAGE);
+                else if (hitTarget.hit) hitTarget.hit(DAMAGE);
+                else hitTarget.isDestroyed = true;
 
-                if (typeof hitTarget.takeDamage === 'function') {
-                    hitTarget.takeDamage(DAMAGE_VALUE);
-                } else if (typeof hitTarget.hit === 'function') {
-                    hitTarget.hit(DAMAGE_VALUE);
-                } else {
-                    // 兜底方案：如果敌人没有血量逻辑，直接标记销毁
-                    hitTarget.isDestroyed = true;
-                }
-
-                // 视觉反馈：红色 ❌ 准星
-                showHitMarker();
+                // 命中反馈 UI
+                const marker = document.getElementById('hit-marker');
+                marker.style.opacity = '1';
+                setTimeout(() => marker.style.opacity = '0', 100);
             }
         }
     }
 });
 
-// 辅助函数：显示击中标记
-function showHitMarker() {
-    let marker = document.getElementById('hit-marker');
-    if (!marker) {
-        marker = document.createElement('div');
-        marker.id = 'hit-marker';
-        marker.innerHTML = '❌';
-        marker.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:red; font-size:40px; pointer-events:none; opacity:0; transition:opacity 0.1s; z-index:60;';
-        document.body.appendChild(marker);
-    }
-    marker.style.opacity = '1';
-    setTimeout(() => { marker.style.opacity = '0'; }, 150);
-}
-
-// ... animate 函数和其他部分保持不变，但确保 weapon.update(delta) 被调用 ...
+// ... animate 函数内确保调用 weapon.update(delta) ...
