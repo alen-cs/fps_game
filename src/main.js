@@ -21,7 +21,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 document.body.appendChild(renderer.domElement); 
-scene.add(camera); // 确保相机加入场景
+scene.add(camera); 
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(ambientLight);
@@ -87,12 +87,28 @@ const uiWaveInfo = document.getElementById('wave-info');
 const uiHealthFill = document.getElementById('health-fill');
 const damageOverlay = document.getElementById('damage-overlay');
 
+// --- 动态创建 Hit Marker UI ---
+const hitMarker = document.createElement('div');
+hitMarker.innerHTML = '❌'; // 命中反馈图标
+hitMarker.style.position = 'absolute';
+hitMarker.style.top = '50%';
+hitMarker.style.left = '50%';
+hitMarker.style.transform = 'translate(-50%, -50%)';
+hitMarker.style.color = '#ff0000';
+hitMarker.style.fontSize = '30px';
+hitMarker.style.opacity = '0';
+hitMarker.style.pointerEvents = 'none';
+hitMarker.style.transition = 'opacity 0.1s';
+hitMarker.style.zIndex = '60';
+document.body.appendChild(hitMarker);
+
 let keys = {}; 
 let mouseDelta = { x: 0, y: 0 };
 let stamina = 100; 
 let canJump = false; 
 let playerHealth = 100;
 let damageOverlayTimer = 0;
+let hitMarkerTimer = 0;
 
 let enemies = [];
 let pickups = [];
@@ -164,31 +180,41 @@ document.addEventListener('keydown', (e) => { keys[e.code] = true; if (e.code ==
 document.addEventListener('keyup', (e) => keys[e.code] = false);
 document.addEventListener('mousemove', (e) => { mouseDelta.x = e.movementX; mouseDelta.y = e.movementY; });
 
-// 【核心修复：万能伤害判定法】
+// 【核心修复：圆柱体宽容击中判定 + 提高伤害 + UI反馈】
 document.addEventListener('mousedown', () => { 
     if(controls.isLocked) {
         const hitResult = weapon.fire(raycaster); 
-        // 如果子弹打中了东西，获取它的 3D 坐标
         if (hitResult && hitResult.point) {
+            let hitAnyEnemy = false;
+            
             enemies.forEach(e => {
-                // 尝试获取敌人的中心坐标 (兼容你的 Enemy 类结构)
                 const targetPos = (e.body && e.body.position) || (e.group && e.group.position) || (e.mesh && e.mesh.position);
                 if (targetPos) {
-                    // 计算命中点到敌人的距离平方
+                    // 1. 计算水平面 (X-Z) 上的距离
                     const dx = targetPos.x - hitResult.point.x;
-                    const dy = targetPos.y - hitResult.point.y;
                     const dz = targetPos.z - hitResult.point.z;
-                    const distSq = dx*dx + dy*dy + dz*dz;
+                    const distSq2D = dx * dx + dz * dz;
 
-                    // 如果命中点在敌人半径 2.5 米内（相当于子弹打在敌人身上）
-                    if (distSq < 6.25) { 
-                        // 暴力兼容各种扣血方法
-                        if (typeof e.takeDamage === 'function') e.takeDamage(35);
-                        else if (typeof e.hit === 'function') e.hit(35);
-                        else e.isDestroyed = true; // 如果都没有，直接秒杀
+                    // 2. 计算垂直 (Y) 上的高度差
+                    const dy = Math.abs(targetPos.y - hitResult.point.y);
+
+                    // 宽容判定：半径 1.5 米 (2.25平方)，高低差允许 4 米以内！
+                    if (distSq2D < 2.25 && dy < 4.0) { 
+                        hitAnyEnemy = true;
+                        const BULLET_DAMAGE = 60; // 伤害直接翻倍提升！
+                        
+                        if (typeof e.takeDamage === 'function') e.takeDamage(BULLET_DAMAGE);
+                        else if (typeof e.hit === 'function') e.hit(BULLET_DAMAGE);
+                        else e.isDestroyed = true; 
                     }
                 }
             });
+
+            // 触发准星反馈特效
+            if (hitAnyEnemy) {
+                hitMarker.style.opacity = '1';
+                hitMarkerTimer = 0.2; // 准星红X 显示 0.2 秒
+            }
         }
     } 
 });
@@ -255,6 +281,12 @@ function animate() {
         if (damageOverlayTimer > 0) {
             damageOverlayTimer -= delta;
             if (damageOverlayTimer <= 0) damageOverlay.style.boxShadow = "inset 0 0 150px rgba(255, 0, 0, 0)";
+        }
+
+        // Hit Marker 消失动画
+        if (hitMarkerTimer > 0) {
+            hitMarkerTimer -= delta;
+            if (hitMarkerTimer <= 0) hitMarker.style.opacity = '0';
         }
 
         pickups.forEach(p => {
