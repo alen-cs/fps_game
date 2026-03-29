@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
+// 全局资源缓存，防止每波刷怪时卡顿 (Flyweight Pattern)
+const GeometryCache = {};
+const MaterialCache = {};
+
 export class EnemyBase {
     constructor(world, scene, startPos, config) {
         this.world = world;
@@ -18,14 +22,30 @@ export class EnemyBase {
 
         this.group = new THREE.Group();
         
-        const coreGeo = new THREE.OctahedronGeometry(config.radius * 0.8, 0); 
-        const coreMat = new THREE.MeshStandardMaterial({ color: this.baseColor, metalness: 0.8, roughness: 0.2 });
-        this.mesh = new THREE.Mesh(coreGeo, coreMat); 
+        // --- 资源复用逻辑 ---
+        const cacheKey = `${config.radius}_${config.color}`;
+        
+        if (!GeometryCache[cacheKey]) {
+            GeometryCache[cacheKey] = {
+                core: new THREE.OctahedronGeometry(config.radius * 0.8, 0),
+                ring: new THREE.TorusGeometry(config.radius * 1.3, config.radius * 0.08, 8, 24)
+            };
+            MaterialCache[cacheKey] = {
+                core: new THREE.MeshStandardMaterial({ color: config.color, metalness: 0.8, roughness: 0.2 }),
+                ring: new THREE.MeshBasicMaterial({ color: config.color })
+            };
+        }
+
+        const geos = GeometryCache[cacheKey];
+        const mats = MaterialCache[cacheKey];
+        // -------------------
+
+        // 由于材质是共享的，我们需要 clone 核心材质以便单独实现受击闪白效果
+        this.coreMatInstance = mats.core.clone(); 
+        this.mesh = new THREE.Mesh(geos.core, this.coreMatInstance); 
         this.mesh.castShadow = true;
         
-        const ringGeo = new THREE.TorusGeometry(config.radius * 1.3, config.radius * 0.08, 8, 24);
-        const ringMat = new THREE.MeshBasicMaterial({ color: this.baseColor });
-        this.ring = new THREE.Mesh(ringGeo, ringMat);
+        this.ring = new THREE.Mesh(geos.ring, mats.ring);
         this.ring.rotation.x = Math.PI / 2;
 
         this.group.add(this.mesh, this.ring);
@@ -53,9 +73,10 @@ export class EnemyBase {
         this.body.velocity.x += hitDir.x * knockback; 
         this.body.velocity.z += hitDir.z * knockback;
 
-        this.mesh.material.color.setHex(0xffffff);
+        // 受击变白
+        this.coreMatInstance.color.setHex(0xffffff);
         setTimeout(() => { 
-            if(this.state !== 'DEAD') this.mesh.material.color.setHex(this.baseColor); 
+            if(this.state !== 'DEAD') this.coreMatInstance.color.setHex(this.baseColor); 
         }, 100);
 
         if (this.health <= 0) this.die();
@@ -63,7 +84,7 @@ export class EnemyBase {
 
     die() {
         this.state = 'DEAD';
-        this.mesh.material.color.setHex(0x333333); 
+        this.coreMatInstance.color.setHex(0x333333); 
         this.ring.visible = false; 
         this.body.mass = 0; 
         this.body.velocity.set(0, 0, 0); 
@@ -71,10 +92,8 @@ export class EnemyBase {
         setTimeout(() => {
             this.scene.remove(this.group);
             this.world.removeBody(this.body);
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
-            this.ring.geometry.dispose();
-            this.ring.material.dispose();
+            // 只释放专属克隆的材质，不释放共享的几何体
+            this.coreMatInstance.dispose(); 
             this.isDestroyed = true; 
         }, 3000);
     }
