@@ -3,30 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Purge - v1.2.0</title>
+    <title>Neon Purge - v1.2.5 Stable</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #0b0b1a; font-family: 'Courier New', Courier, monospace; user-select: none; }
         #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
         /* 准星 */
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; transform: translate(-50%, -50%); }
         #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(0, 255, 255, 0.8); }
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        #crosshair::before { top: 7px; left: 0; width: 16px; height: 2px; }
+        #crosshair::after { top: 0; left: 7px; width: 2px; height: 16px; }
         
         /* 命中反馈红X */
-        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 40px; opacity: 0; transition: opacity 0.1s; z-index: 11; font-weight: bold; }
+        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0055; font-size: 36px; opacity: 0; transition: opacity 0.1s; z-index: 11; font-weight: bold; }
 
-        #health-bar { position: absolute; bottom: 30px; left: 30px; width: 300px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; }
-        #health-fill { width: 100%; height: 100%; background: #ff2222; transition: width 0.2s; }
+        /* 血条 */
+        #health-bar { position: absolute; bottom: 30px; left: 30px; width: 250px; height: 15px; background: rgba(255,255,255,0.1); border: 1px solid #00ffff; }
+        #health-fill { width: 100%; height: 100%; background: #00ffff; transition: width 0.2s; box-shadow: 0 0 10px #00ffff; }
         
-        #wave-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; text-shadow: 2px 2px 4px #000; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; pointer-events: auto; }
+        /* UI文字 */
+        #wave-info { position: absolute; top: 20px; left: 30px; font-size: 20px; color: #00ffff; text-shadow: 0 0 5px #00ffff; }
+        #ammo-info { position: absolute; bottom: 25px; right: 30px; font-size: 28px; color: #00ffff; text-shadow: 0 0 5px #00ffff; }
         
-        /* 版本号标识 */
-        #version-info { position: absolute; bottom: 10px; left: 10px; color: rgba(255, 255, 255, 0.3); font-size: 12px; }
-        #ammo-info { position: absolute; bottom: 20px; right: 30px; font-size: 32px; color: #fff; font-weight: bold; }
+        /* 初始画面 */
+        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,25,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; pointer-events: auto; }
+        #instructions h1 { color: #ff0055; text-shadow: 0 0 20px #ff0055; font-size: 48px; margin-bottom: 10px; }
+        
+        /* 版本号 */
+        #version-info { position: absolute; bottom: 10px; left: 10px; color: rgba(255, 255, 255, 0.2); font-size: 12px; }
     </style>
+
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
     <script type="importmap">
         {
@@ -41,75 +47,335 @@
 <body>
     <div id="ui-container">
         <div id="crosshair"></div>
-        <div id="hit-marker">❌</div>
+        <div id="hit-marker">×</div>
         <div id="health-bar"><div id="health-fill"></div></div>
-        <div id="wave-info">SYSTEM INITIALIZING...</div>
-        <div id="ammo-info">AMMO: -- / --</div>
-        <div id="version-info">Build: v1.2.0 (Ballistics & Damage Fix)</div>
+        <div id="wave-info">WAVE: 1 | ENEMIES: 0</div>
+        <div id="ammo-info">AMMO: 30 / 120</div>
+        <div id="version-info">Build: v1.2.5 (Standalone Stable)</div>
     </div>
     
     <div id="instructions">
-        <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">NEON PURGE</h1>
-        <p>CLICK TO ENGAGE</p>
+        <h1>NEON PURGE</h1>
+        <p style="color: #00ffff;">[ 点击屏幕开始游戏 ]</p>
+        <p style="font-size: 14px; color: #888;">WASD 移动 | 鼠标瞄准与开火 | R 换弹</p>
     </div>
     
-    <script type="module" src="src/main.js?v=1.2.0"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Purge - v1.2.0</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
-        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        
-        /* 准星 */
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(0, 255, 255, 0.8); }
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
-        
-        /* 命中反馈红X */
-        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 40px; opacity: 0; transition: opacity 0.1s; z-index: 11; font-weight: bold; }
+    <script type="module">
+        import * as THREE from 'three';
+        import * as CANNON from 'cannon-es';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-        #health-bar { position: absolute; bottom: 30px; left: 30px; width: 300px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; }
-        #health-fill { width: 100%; height: 100%; background: #ff2222; transition: width 0.2s; }
-        
-        #wave-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; text-shadow: 2px 2px 4px #000; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; pointer-events: auto; }
-        
-        /* 版本号标识 */
-        #version-info { position: absolute; bottom: 10px; left: 10px; color: rgba(255, 255, 255, 0.3); font-size: 12px; }
-        #ammo-info { position: absolute; bottom: 20px; right: 30px; font-size: 32px; color: #fff; font-weight: bold; }
-    </style>
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        console.log("%c 🚀 游戏启动：全模块整合版加载成功！", "color: #00ff00; font-weight: bold;");
+
+        // --- 1. 基础场景初始化 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.025);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+
+        // --- 2. 灯光与地面 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0x00ffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        scene.add(dirLight);
+
+        // 地面物理与网格
+        const groundMat = new CANNON.Material();
+        const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: groundMat });
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(groundBody);
+
+        const gridHelper = new THREE.GridHelper(200, 50, 0x00ffff, 0x222244);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x0a0a15 }));
+        groundMesh.rotation.x = -Math.PI / 2;
+        scene.add(groundMesh);
+
+        // --- 3. 玩家控制 ---
+        const playerBody = new CANNON.Body({
+            mass: 70, shape: new CANNON.Sphere(0.6), position: new CANNON.Vec3(0, 2, 0), fixedRotation: true, linearDamping: 0.9
+        });
+        world.addBody(playerBody);
+
+        const controls = new PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
+        instructions.addEventListener('click', () => controls.lock());
+        controls.addEventListener('lock', () => instructions.style.display = 'none');
+        controls.addEventListener('unlock', () => instructions.style.display = 'flex');
+
+        let keys = {};
+        document.addEventListener('keydown', (e) => { keys[e.code] = true; if(e.code === 'KeyR') weapon.reload(); });
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        let playerHealth = 100;
+
+        // --- 4. 武器系统 (整合类) ---
+        class Weapon {
+            constructor() {
+                this.ammo = 30;
+                this.maxAmmo = 120;
+                this.fireRate = 0.12;
+                this.lastFireTime = 0;
+                this.isReloading = false;
+
+                // 枪械模型
+                this.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.5), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                this.mesh.position.set(0.2, -0.2, -0.5);
+                camera.add(this.mesh);
+
+                // 子弹池
+                this.bullets = [];
+                for (let i = 0; i < 15; i++) {
+                    const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.8), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
+                    b.visible = false;
+                    scene.add(b);
+                    this.bullets.push({ mesh: b, active: false, velocity: new THREE.Vector3(), life: 0 });
+                }
+            }
+
+            update(delta) {
+                this.bullets.forEach(b => {
+                    if (b.active) {
+                        b.mesh.position.addScaledVector(b.velocity, delta);
+                        b.life -= delta;
+                        if (b.life <= 0) { b.active = false; b.mesh.visible = false; }
+                    }
+                });
+                this.mesh.position.lerp(new THREE.Vector3(0.2, -0.2, -0.5), delta * 10);
+            }
+
+            fire(raycaster) {
+                if (this.ammo <= 0 || this.isReloading) return null;
+                const now = performance.now() / 1000;
+                if (now - this.lastFireTime < this.fireRate) return null;
+
+                this.lastFireTime = now;
+                this.ammo--;
+                this.updateUI();
+                this.mesh.position.z += 0.1; // 后坐力
+
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const intersects = raycaster.intersectObjects(scene.children, true)
+                    .filter(i => !this.bullets.some(b => b.mesh === i.object) && i.object !== this.mesh);
+
+                let targetPoint = new THREE.Vector3();
+                let hitObject = null;
+
+                if (intersects.length > 0) {
+                    targetPoint.copy(intersects[0].point);
+                    hitObject = intersects[0].object;
+                } else {
+                    raycaster.ray.at(100, targetPoint);
+                }
+
+                // 视觉子弹
+                const b = this.bullets.find(bullet => !bullet.active);
+                if (b) {
+                    b.active = true; b.life = 0.8; b.mesh.visible = true;
+                    this.mesh.getWorldPosition(b.mesh.position);
+                    b.mesh.lookAt(targetPoint);
+                    b.velocity.subVectors(targetPoint, b.mesh.position).normalize().multiplyScalar(200);
+                }
+                return { point: targetPoint, object: hitObject };
+            }
+
+            reload() {
+                if (this.isReloading || this.ammo === 30 || this.maxAmmo <= 0) return;
+                this.isReloading = true;
+                document.getElementById('ammo-info').innerText = "RELOADING...";
+                setTimeout(() => {
+                    const needed = 30 - this.ammo;
+                    const toReload = Math.min(needed, this.maxAmmo);
+                    this.ammo += toReload; this.maxAmmo -= toReload;
+                    this.isReloading = false; this.updateUI();
+                }, 1200);
+            }
+
+            updateUI() {
+                document.getElementById('ammo-info').innerText = `AMMO: ${this.ammo} / ${this.maxAmmo}`;
             }
         }
+        const weapon = new Weapon();
+        const raycaster = new THREE.Raycaster();
+
+        // --- 5. 敌人系统 (整合类) ---
+        class Enemy {
+            constructor(pos) {
+                this.health = 100;
+                this.isDestroyed = false;
+                
+                this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 1.5), new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.2 }));
+                this.mesh.position.copy(pos);
+                scene.add(this.mesh);
+                
+                this.body = new CANNON.Body({
+                    mass: 5, shape: new CANNON.Box(new CANNON.Vec3(0.75, 1, 0.75)), position: new CANNON.Vec3(pos.x, pos.y, pos.z)
+                });
+                world.addBody(this.body);
+            }
+
+            update(delta, playerPos) {
+                if (this.isDestroyed) return;
+                // 同步物理位置到网格
+                this.mesh.position.copy(this.body.position);
+                
+                // 简单的寻路AI：向玩家移动
+                const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
+                dir.y = 0; dir.normalize();
+                this.body.velocity.x = dir.x * 4;
+                this.body.velocity.z = dir.z * 4;
+
+                // 伤害玩家检测
+                const distSq = this.mesh.position.distanceToSquared(playerPos);
+                if (distSq < 4) {
+                    playerHealth = Math.max(0, playerHealth - 0.5);
+                    document.getElementById('health-fill').style.width = playerHealth + '%';
+                }
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                this.mesh.material.emissiveIntensity = 1; // 闪烁一下
+                setTimeout(() => { if(this.mesh) this.mesh.material.emissiveIntensity = 0.2; }, 50);
+
+                if (this.health <= 0) {
+                    this.isDestroyed = true;
+                    scene.remove(this.mesh);
+                    world.removeBody(this.body);
+                }
+            }
+        }
+
+        let enemies = [];
+        let currentWave = 1;
+
+        function spawnWave() {
+            for (let i = 0; i < currentWave * 2; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 30 + Math.random() * 10;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                enemies.push(new Enemy(new THREE.Vector3(x, 1, z)));
+            }
+            updateWaveUI();
+        }
+        spawnWave();
+
+        function updateWaveUI() {
+            document.getElementById('wave-info').innerText = `WAVE: ${currentWave} | ENEMIES: ${enemies.length}`;
+        }
+
+        // --- 6. 核心射击事件 ---
+        document.addEventListener('mousedown', () => {
+            if (controls.isLocked) {
+                const result = weapon.fire(raycaster);
+                if (result) {
+                    const { point, object } = result;
+                    let hitAny = false;
+
+                    // 1. 直击判定
+                    enemies.forEach(enemy => {
+                        if (object === enemy.mesh) {
+                            enemy.takeDamage(40);
+                            hitAny = true;
+                        }
+                    });
+
+                    // 2. 距离宽容补偿（解决高频射击穿模）
+                    if (!hitAny && point) {
+                        enemies.forEach(enemy => {
+                            const dist = enemy.mesh.position.distanceTo(point);
+                            if (dist < 2.5) {
+                                enemy.takeDamage(40);
+                                hitAny = true;
+                            }
+                        });
+                    }
+
+                    // 命中红X反馈
+                    if (hitAny) {
+                        const marker = document.getElementById('hit-marker');
+                        marker.style.opacity = '1';
+                        console.log("HIT ENEMY!");
+                        setTimeout(() => marker.style.opacity = '0', 100);
+                    }
+                }
+            }
+        });
+
+        // --- 7. 主渲染循环 ---
+        const clock = new THREE.Clock();
+        const moveDir = new THREE.Vector3();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (controls.isLocked) {
+                world.step(1/60, delta, 3);
+
+                // 玩家移动控制
+                moveDir.set(0, 0, 0);
+                if (keys['KeyW']) moveDir.z -= 1;
+                if (keys['KeyS']) moveDir.z += 1;
+                if (keys['KeyA']) moveDir.x -= 1;
+                if (keys['KeyD']) moveDir.x += 1;
+
+                if (moveDir.lengthSq() > 0) {
+                    moveDir.normalize().multiplyScalar(10).applyQuaternion(camera.quaternion);
+                    playerBody.velocity.x = moveDir.x;
+                    playerBody.velocity.z = moveDir.z;
+                } else {
+                    playerBody.velocity.x = 0;
+                    playerBody.velocity.z = 0;
+                }
+
+                // 同步相机到物理身躯
+                camera.position.set(playerBody.position.x, playerBody.position.y + 0.6, playerBody.position.z);
+
+                // 更新武器和敌人
+                weapon.update(delta);
+                enemies.forEach(enemy => enemy.update(delta, playerBody.position));
+
+                // 清理死掉的敌人
+                const prevCount = enemies.length;
+                enemies = enemies.filter(enemy => !enemy.isDestroyed);
+                if(enemies.length !== prevCount) updateWaveUI();
+
+                // 自动开启下一波
+                if (enemies.length === 0) {
+                    currentWave++;
+                    spawnWave();
+                }
+
+                // 死亡判定
+                if (playerHealth <= 0) {
+                    alert("游戏结束！点击确定重新开始。");
+                    location.reload();
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 自适应窗口
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
     </script>
-</head>
-<body>
-    <div id="ui-container">
-        <div id="crosshair"></div>
-        <div id="hit-marker">❌</div>
-        <div id="health-bar"><div id="health-fill"></div></div>
-        <div id="wave-info">SYSTEM INITIALIZING...</div>
-        <div id="ammo-info">AMMO: -- / --</div>
-        <div id="version-info">Build: v1.2.0 (Ballistics & Damage Fix)</div>
-    </div>
-    
-    <div id="instructions">
-        <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">NEON PURGE</h1>
-        <p>CLICK TO ENGAGE</p>
-    </div>
-    
-    <script type="module" src="src/main.js?v=1.2.0"></script>
 </body>
 </html>
