@@ -7,7 +7,7 @@ export class Enemy1 {
         this.world = world;
         this.health = 100;
         this.isDestroyed = false;
-        this.halfHeight = 1; // 供 main.js 地面判定使用
+        this.halfHeight = 1; 
 
         this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 1.5), new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.2 }));
         this.mesh.position.copy(pos);
@@ -19,19 +19,20 @@ export class Enemy1 {
         this.world.addBody(this.body);
     }
 
-    update(delta, playerPos) {
+    update(delta, safePlayerPosThree) {
         if (this.isDestroyed) return;
-        this.mesh.position.copy(this.body.position);
+        // 安全坐标同步
+        this.mesh.position.set(this.body.position.x, this.body.position.y, this.body.position.z);
 
-        const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
+        const dir = new THREE.Vector3().subVectors(safePlayerPosThree, this.mesh.position);
         dir.y = 0; dir.normalize();
         
-        // 移速提升至 8 (原为 4)
-        this.body.velocity.x = dir.x * 6;
-        this.body.velocity.z = dir.z * 6;
+        this.body.velocity.x = dir.x * 4;
+        this.body.velocity.z = dir.z * 4;
     }
 
     takeDamage(amount) {
+        if (this.isDestroyed) return;
         this.health -= amount;
         this.mesh.material.emissiveIntensity = 1;
         setTimeout(() => { if (this.mesh) this.mesh.material.emissiveIntensity = 0.2; }, 50);
