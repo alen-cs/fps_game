@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPS WebGL Game</title>
+    <title>Neon Purge - v1.2.0</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
         #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.8); }
+        
+        /* 准星 */
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(0, 255, 255, 0.8); }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
-        body.sprinting #crosshair { transform: translate(-50%, -50%) scale(1.5); transition: transform 0.2s; }
         
+        /* 命中反馈红X */
+        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 40px; opacity: 0; transition: opacity 0.1s; z-index: 11; font-weight: bold; }
+
         #health-bar { position: absolute; bottom: 30px; left: 30px; width: 300px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; }
         #health-fill { width: 100%; height: 100%; background: #ff2222; transition: width 0.2s; }
-        #stamina-bar { position: absolute; bottom: 60px; left: 30px; width: 200px; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid #fff; }
-        #stamina-fill { width: 100%; height: 100%; background: #22aaff; }
         
-        #wave-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; pointer-events: auto; cursor: pointer; }
-        #instructions h1 { font-size: 48px; margin-bottom: 20px; color: #ff0055; text-shadow: 0 0 10px #ff0055; }
-        #instructions p { font-size: 18px; margin: 10px 0; text-align: center; }
+        #wave-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; text-shadow: 2px 2px 4px #000; }
+        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; pointer-events: auto; }
         
-        #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; box-shadow: inset 0 0 0 rgba(255,0,0,0); transition: box-shadow 0.1s; z-index: 5; }
-        
-        /* 版本标识样式 */
-        #version-info {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: rgba(255, 255, 255, 0.4);
-            font-family: monospace;
-            font-size: 14px;
-            z-index: 100;
-            pointer-events: none;
-        }
+        /* 版本号标识 */
+        #version-info { position: absolute; bottom: 10px; left: 10px; color: rgba(255, 255, 255, 0.3); font-size: 12px; }
+        #ammo-info { position: absolute; bottom: 20px; right: 30px; font-size: 32px; color: #fff; font-weight: bold; }
     </style>
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
     <script type="importmap">
@@ -51,20 +41,75 @@
 <body>
     <div id="ui-container">
         <div id="crosshair"></div>
+        <div id="hit-marker">❌</div>
         <div id="health-bar"><div id="health-fill"></div></div>
-        <div id="stamina-bar"><div id="stamina-fill"></div></div>
-        <div id="wave-info">LOADING...</div>
-        <div id="damage-overlay"></div>
-        
-        <div id="version-info">Build: v1.1.0 (弹道与伤害修正版)</div>
+        <div id="wave-info">SYSTEM INITIALIZING...</div>
+        <div id="ammo-info">AMMO: -- / --</div>
+        <div id="version-info">Build: v1.2.0 (Ballistics & Damage Fix)</div>
     </div>
     
     <div id="instructions">
-        <h1>NEON PURGE</h1>
-        <p>CLICK TO START / RESUME</p>
-        <p>WASD to Move | SPACE to Jump | SHIFT to Sprint | LEFT CLICK to Shoot | R to Reload</p>
+        <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">NEON PURGE</h1>
+        <p>CLICK TO ENGAGE</p>
     </div>
     
-    <script type="module" src="src/main.js?v=1.1.0"></script>
+    <script type="module" src="src/main.js?v=1.2.0"></script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Purge - v1.2.0</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        
+        /* 准星 */
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(0, 255, 255, 0.8); }
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        
+        /* 命中反馈红X */
+        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 40px; opacity: 0; transition: opacity 0.1s; z-index: 11; font-weight: bold; }
+
+        #health-bar { position: absolute; bottom: 30px; left: 30px; width: 300px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; }
+        #health-fill { width: 100%; height: 100%; background: #ff2222; transition: width 0.2s; }
+        
+        #wave-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; text-shadow: 2px 2px 4px #000; }
+        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; pointer-events: auto; }
+        
+        /* 版本号标识 */
+        #version-info { position: absolute; bottom: 10px; left: 10px; color: rgba(255, 255, 255, 0.3); font-size: 12px; }
+        #ammo-info { position: absolute; bottom: 20px; right: 30px; font-size: 32px; color: #fff; font-weight: bold; }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui-container">
+        <div id="crosshair"></div>
+        <div id="hit-marker">❌</div>
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="wave-info">SYSTEM INITIALIZING...</div>
+        <div id="ammo-info">AMMO: -- / --</div>
+        <div id="version-info">Build: v1.2.0 (Ballistics & Damage Fix)</div>
+    </div>
+    
+    <div id="instructions">
+        <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">NEON PURGE</h1>
+        <p>CLICK TO ENGAGE</p>
+    </div>
+    
+    <script type="module" src="src/main.js?v=1.2.0"></script>
 </body>
 </html>
