@@ -1,24 +1,133 @@
-body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; user-select: none; }
-#crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 100;}
-.line { background: #00ff88; position: absolute; transition: all 0.1s; }
-.top, .bottom { width: 2px; height: 10px; left: -1px; }
-.left, .right { width: 10px; height: 2px; top: -1px; }
-.top { top: -15px; } .bottom { top: 5px; }
-.left { left: -15px; } .right { left: 5px; }
-body.sprinting .top { top: -25px; } body.sprinting .bottom { top: 15px; }
-body.sprinting .left { left: -25px; } body.sprinting .right { left: 15px; }
+body { 
+    margin: 0; 
+    overflow: hidden; 
+    background-color: #0b0b1a; 
+    font-family: 'Courier New', Courier, monospace; 
+    user-select: none; 
+}
 
-#hud { position: absolute; bottom: 30px; left: 30px; color: #fff; z-index: 100;}
-.health-bar { width: 250px; height: 15px; background: #333; border: 2px solid #555; margin-bottom: 5px; }
-#health-fill { width: 100%; height: 100%; background: #ff2222; transition: width 0.2s; }
-.stamina-bar { width: 200px; height: 10px; background: #333; border: 1px solid #555; margin-bottom: 10px; }
-#stamina-fill { width: 100%; height: 100%; background: #00ff88; transition: width 0.1s; }
-.ammo { font-size: 32px; font-weight: bold; font-family: monospace; transition: color 0.2s; }
+#ui-container { 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    pointer-events: none; 
+    z-index: 10; 
+}
 
-#instructions { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 200; color: #fff; flex-direction: column;}
-.glass-card { background: rgba(0, 255, 136, 0.1); padding: 40px; border: 1px solid #00ff88; text-align: center; }
-.warning { color: #ff2222; margin-top: 20px; font-weight: bold; }
+/* 准星 */
+#crosshair { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    width: 16px; 
+    height: 16px; 
+    transform: translate(-50%, -50%); 
+}
 
-#wave-info { position: absolute; top: 20px; right: 30px; color: white; font-family: monospace; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px rgba(0,255,136,0.8); pointer-events: none; z-index: 100; transition: color 0.3s; }
+#crosshair::before, #crosshair::after { 
+    content: ''; 
+    position: absolute; 
+    background: rgba(0, 255, 255, 0.8); 
+}
 
-#damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px rgba(255, 0, 0, 0); pointer-events: none; z-index: 50; transition: box-shadow 0.3s; }
+#crosshair::before { 
+    top: 7px; 
+    left: 0; 
+    width: 16px; 
+    height: 2px; 
+}
+
+#crosshair::after { 
+    top: 0; 
+    left: 7px; 
+    width: 2px; 
+    height: 16px; 
+}
+
+/* 命中反馈红X */
+#hit-marker { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    color: #ff0055; 
+    font-size: 36px; 
+    opacity: 0; 
+    transition: opacity 0.1s; 
+    z-index: 11; 
+    font-weight: bold; 
+}
+
+/* 血条 */
+#health-bar { 
+    position: absolute; 
+    bottom: 30px; 
+    left: 30px; 
+    width: 250px; 
+    height: 15px; 
+    background: rgba(255,255,255,0.1); 
+    border: 1px solid #00ffff; 
+}
+
+#health-fill { 
+    width: 100%; 
+    height: 100%; 
+    background: #00ffff; 
+    transition: width 0.2s; 
+    box-shadow: 0 0 10px #00ffff; 
+}
+
+/* UI文字 */
+#wave-info { 
+    position: absolute; 
+    top: 20px; 
+    left: 30px; 
+    font-size: 20px; 
+    color: #00ffff; 
+    text-shadow: 0 0 5px #00ffff; 
+}
+
+#ammo-info { 
+    position: absolute; 
+    bottom: 25px; 
+    right: 30px; 
+    font-size: 28px; 
+    color: #00ffff; 
+    text-shadow: 0 0 5px #00ffff; 
+}
+
+/* 初始画面 */
+#instructions { 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(10,10,25,0.9); 
+    color: white; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 100; 
+    cursor: pointer; 
+    pointer-events: auto; 
+}
+
+#instructions h1 { 
+    color: #ff0055; 
+    text-shadow: 0 0 20px #ff0055; 
+    font-size: 48px; 
+    margin-bottom: 10px; 
+}
+
+/* 版本号 */
+#version-info { 
+    position: absolute; 
+    bottom: 10px; 
+    left: 10px; 
+    color: rgba(255, 255, 255, 0.2); 
+    font-size: 12px; 
+}
