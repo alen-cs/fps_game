@@ -5,10 +5,10 @@ export class Boss {
     constructor(scene, world, pos) {
         this.scene = scene;
         this.world = world;
-        this.health = 500; // 厚血
+        this.health = 500;
         this.isDestroyed = false;
+        this.halfHeight = 2.5; // 供 main.js 地面判定使用
 
-        // 巨型黄色
         this.mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 4), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 0.2 }));
         this.mesh.position.copy(pos);
         this.scene.add(this.mesh);
@@ -25,8 +25,10 @@ export class Boss {
 
         const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
         dir.y = 0; dir.normalize();
-        this.body.velocity.x = dir.x * 2; // 移动缓慢
-        this.body.velocity.z = dir.z * 2;
+        
+        // 移速提升至 5 (原为 2)
+        this.body.velocity.x = dir.x * 5; 
+        this.body.velocity.z = dir.z * 5;
     }
 
     takeDamage(amount) {
