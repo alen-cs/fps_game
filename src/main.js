@@ -98,6 +98,14 @@ let pickups = [];
 let currentWave = 0;
 let isWaveSpawning = false; 
 
+// UI 状态缓存，防止频繁操作 DOM 导致卡顿
+const uiCache = {
+    stamina: -1,
+    health: -1,
+    waveText: "",
+    isSprinting: null
+};
+
 function spawnPickups(count) {
     for (let i = 0; i < count; i++) {
         let x = (Math.random() - 0.5) * 80;
@@ -111,7 +119,13 @@ function handlePlayerDamage(amount) {
     if (playerHealth <= 0) return;
     
     playerHealth -= amount;
-    uiHealthFill.style.width = Math.max(0, playerHealth) + '%';
+    
+    // 更新血条缓存
+    const hpWidth = Math.max(0, playerHealth) + '%';
+    if (uiCache.health !== hpWidth) {
+        uiHealthFill.style.width = hpWidth;
+        uiCache.health = hpWidth;
+    }
     
     damageOverlay.style.boxShadow = "inset 0 0 150px rgba(255, 0, 0, 0.8)";
     damageOverlayTimer = 0.5;
@@ -128,7 +142,9 @@ function startNextWave() {
     isWaveSpawning = true;
     currentWave++;
     
-    uiWaveInfo.innerText = `WAVE ${currentWave} - INCOMING...`;
+    const newWaveText = `WAVE ${currentWave} - INCOMING...`;
+    uiWaveInfo.innerText = newWaveText;
+    uiCache.waveText = newWaveText;
     uiWaveInfo.style.color = "#ffaa00";
 
     setTimeout(() => {
@@ -213,8 +229,19 @@ function animate() {
         }
         
         if (!isSprinting && stamina < 100) stamina = Math.min(100, stamina + delta * 15);
-        uiStaminaFill.style.width = stamina + '%';
-        document.body.classList.toggle('sprinting', isSprinting && isMoving);
+        
+        // 1. 体力条与冲刺 UI 优化：仅在值变化时更新 DOM
+        const intStamina = Math.round(stamina);
+        if (uiCache.stamina !== intStamina) {
+            uiStaminaFill.style.width = intStamina + '%';
+            uiCache.stamina = intStamina;
+        }
+
+        const isSprintingStatus = Boolean(isSprinting && isMoving);
+        if (uiCache.isSprinting !== isSprintingStatus) {
+            document.body.classList.toggle('sprinting', isSprintingStatus);
+            uiCache.isSprinting = isSprintingStatus;
+        }
 
         if(keys['Space'] && canJump) {
             playerBody.velocity.y = 6; 
@@ -242,28 +269,49 @@ function animate() {
                 p.collect();
                 if (p.type === 'HEALTH') {
                     playerHealth = Math.min(100, playerHealth + 40); 
-                    uiHealthFill.style.width = playerHealth + '%';
+                    
+                    // 同样复用 UI 缓存更新
+                    const hpWidth = playerHealth + '%';
+                    if (uiCache.health !== hpWidth) {
+                        uiHealthFill.style.width = hpWidth;
+                        uiCache.health = hpWidth;
+                    }
+
                     damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 255, 136, 0.5)";
                     damageOverlayTimer = 0.3;
                 } else if (p.type === 'AMMO') {
                     weapon.maxAmmo += 60; 
-                    weapon.uiAmmo.innerText = `${weapon.ammo} / ${weapon.maxAmmo}`;
+                    weapon._updateAmmoUI(`${weapon.ammo} / ${weapon.maxAmmo}`); // 内部自带缓存
                     damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 136, 255, 0.5)";
                     damageOverlayTimer = 0.3;
                 }
             }
         });
-        pickups = pickups.filter(p => !p.isCollected);
 
         weapon.update(delta, isMoving, isSprinting, mouseDelta);
         mouseDelta.x = 0; mouseDelta.y = 0; 
         particles.update(delta); 
         
         enemies.forEach(e => e.update(delta, playerBody.position, handlePlayerDamage)); 
-        enemies = enemies.filter(e => !e.isDestroyed);
+        
+        // 2. 数组原地清理，彻底杜绝 GC 垃圾回收卡顿
+        for (let i = pickups.length - 1; i >= 0; i--) {
+            if (pickups[i].isCollected) pickups.splice(i, 1);
+        }
 
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            if (enemies[i].isDestroyed) enemies.splice(i, 1);
+        }
+
+        // 3. 波次信息 UI 优化：防抖更新
         const aliveEnemies = enemies.filter(e => e.state !== 'DEAD').length;
-        if (!isWaveSpawning) uiWaveInfo.innerText = `WAVE ${currentWave} | ENEMIES: ${aliveEnemies}`;
+        if (!isWaveSpawning) {
+            const newWaveText = `WAVE ${currentWave} | ENEMIES: ${aliveEnemies}`;
+            if (uiCache.waveText !== newWaveText) {
+                uiWaveInfo.innerText = newWaveText;
+                uiCache.waveText = newWaveText;
+            }
+        }
 
         if (aliveEnemies === 0 && !isWaveSpawning && enemies.length === 0) {
             startNextWave();
