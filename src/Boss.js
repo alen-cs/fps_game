@@ -1,28 +1,43 @@
-import { EnemyBase } from './EnemyBase.js';
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 
-export class Boss extends EnemyBase {
-    constructor(world, scene, startPos) {
-        super(world, scene, startPos, { 
-            speed: 2.0,      
-            health: 500,     
-            radius: 1.5,     
-            color: 0x8800ff, 
-            mass: 500,
-            damage: 40
+export class Boss {
+    constructor(scene, world, pos) {
+        this.scene = scene;
+        this.world = world;
+        this.health = 500; // 厚血
+        this.isDestroyed = false;
+
+        // 巨型黄色
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 4), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 0.2 }));
+        this.mesh.position.copy(pos);
+        this.scene.add(this.mesh);
+
+        this.body = new CANNON.Body({
+            mass: 50, shape: new CANNON.Box(new CANNON.Vec3(2, 2.5, 2)), position: new CANNON.Vec3(pos.x, pos.y, pos.z)
         });
+        this.world.addBody(this.body);
     }
 
-    // Boss 重写受击逻辑：免疫击退
-    takeDamage(amount, hitDir) {
-        if (this.state === 'DEAD') return;
-        this.health -= amount;
-        
-        // 使用核心材质实例闪白
-        this.coreMatInstance.color.setHex(0xffffff);
-        setTimeout(() => { 
-            if(this.state !== 'DEAD') this.coreMatInstance.color.setHex(this.baseColor); 
-        }, 100);
+    update(delta, playerPos) {
+        if (this.isDestroyed) return;
+        this.mesh.position.copy(this.body.position);
 
-        if (this.health <= 0) this.die();
+        const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
+        dir.y = 0; dir.normalize();
+        this.body.velocity.x = dir.x * 2; // 移动缓慢
+        this.body.velocity.z = dir.z * 2;
+    }
+
+    takeDamage(amount) {
+        this.health -= amount;
+        this.mesh.material.emissiveIntensity = 1;
+        setTimeout(() => { if (this.mesh) this.mesh.material.emissiveIntensity = 0.2; }, 50);
+
+        if (this.health <= 0) {
+            this.isDestroyed = true;
+            this.scene.remove(this.mesh);
+            this.world.removeBody(this.body);
+        }
     }
 }
