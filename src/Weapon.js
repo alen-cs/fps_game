@@ -12,21 +12,18 @@ export class Weapon {
         this.lastFireTime = 0;
         this.isReloading = false;
 
-        // --- 1. 构建枪械模型 (使用 Basic 材质，保证在任何光照下绝对可见) ---
+        // --- 1. 构建枪械模型 ---
         this.weaponGroup = new THREE.Group();
         
-        // 枪身 (深灰色)
         const bodyGeo = new THREE.BoxGeometry(0.15, 0.2, 0.6);
         const bodyMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         
-        // 枪管 (黑色)
         const barrelGeo = new THREE.BoxGeometry(0.05, 0.05, 0.4);
         const barrelMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
         this.barrel = new THREE.Mesh(barrelGeo, barrelMat);
         this.barrel.position.set(0, 0.05, -0.4); 
 
-        // 瞄具 (发光红点)
         const sightGeo = new THREE.BoxGeometry(0.02, 0.06, 0.02);
         const sightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const sight = new THREE.Mesh(sightGeo, sightMat);
@@ -36,7 +33,6 @@ export class Weapon {
         this.weaponGroup.add(this.barrel);
         this.weaponGroup.add(sight);
 
-        // 【关键修复】稍微推远一点 (-0.8)，防止被相机的近裁剪面切掉看不见
         this.basePosition = new THREE.Vector3(0.35, -0.35, -0.8);
         this.weaponGroup.position.copy(this.basePosition);
         this.camera.add(this.weaponGroup); 
@@ -54,15 +50,26 @@ export class Weapon {
         this.muzzleFlash.rotation.y = Math.PI / 2;
         this.weaponGroup.add(this.muzzleFlash);
 
-        // --- 3. 实体子弹对象池 (告别激光线！) ---
+        // --- 3. 实体子弹池 ---
         this.bullets = [];
-        const bulletGeo = new THREE.BoxGeometry(0.04, 0.04, 0.5);
-        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 }); // 金黄色发光实体子弹
+        const bulletGeo = new THREE.BoxGeometry(0.04, 0.04, 0.8);
+        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffea00 }); 
         for (let i = 0; i < 15; i++) {
             const mesh = new THREE.Mesh(bulletGeo, bulletMat);
             mesh.visible = false;
             this.scene.add(mesh);
             this.bullets.push({ mesh: mesh, active: false, velocity: new THREE.Vector3(), life: 0 });
+        }
+
+        // --- 4. 击中火花特效池 (增强打击感) ---
+        this.hitFlashes = [];
+        const hitFlashGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const hitFlashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+        for(let i = 0; i < 10; i++) {
+            let mesh = new THREE.Mesh(hitFlashGeo, hitFlashMat.clone());
+            mesh.visible = false;
+            this.scene.add(mesh);
+            this.hitFlashes.push({ mesh: mesh, life: 0 });
         }
 
         this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
@@ -87,7 +94,6 @@ export class Weapon {
     }
 
     update(delta, isMoving, isSprinting) {
-        // 枪械晃动
         if (isMoving && !this.isReloading) {
             const speed = isSprinting ? 14 : 8;
             this.swayTime += delta * speed;
@@ -97,24 +103,32 @@ export class Weapon {
             this.weaponGroup.position.lerp(this.basePosition, delta * 5);
         }
 
-        // 后座力恢复
         this.weaponGroup.rotation.x = THREE.MathUtils.lerp(this.weaponGroup.rotation.x, 0, delta * 15);
         this.weaponGroup.position.z = THREE.MathUtils.lerp(this.weaponGroup.position.z, this.basePosition.z, delta * 15);
 
-        // 枪口火焰消散
         if (this.muzzleFlash.material.opacity > 0) {
             this.muzzleFlash.material.opacity -= delta * 15;
         }
 
-        // 【关键修复】更新实体子弹的飞行轨迹
+        // 更新子弹飞行
         for (let b of this.bullets) {
             if (b.active) {
-                b.mesh.position.addScaledVector(b.velocity, delta); // 子弹向前飞
+                b.mesh.position.addScaledVector(b.velocity, delta);
                 b.life -= delta;
                 if (b.life <= 0) {
                     b.active = false;
                     b.mesh.visible = false;
                 }
+            }
+        }
+
+        // 更新击中火花特效
+        for (let f of this.hitFlashes) {
+            if (f.life > 0) {
+                f.life -= delta;
+                f.mesh.scale.addScalar(delta * 15); // 快速放大
+                f.mesh.material.opacity = f.life * 5; // 渐隐
+                if (f.life <= 0) f.mesh.visible = false;
             }
         }
     }
@@ -132,46 +146,56 @@ export class Weapon {
         this.ammo--;
         this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
 
-        // 后座力与枪口火焰
         this.weaponGroup.rotation.x += 0.05 + Math.random() * 0.02; 
         this.weaponGroup.position.z += 0.1; 
         this.muzzleFlash.material.opacity = 1;
         this.muzzleFlash.rotation.z = Math.random() * Math.PI; 
 
-        // 射线检测获取物理碰撞点
+        // 射线检测
         raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
         const intersects = raycaster.intersectObjects(this.scene.children, true);
         
         let hitPoint = null;
         for (let i = 0; i < intersects.length; i++) {
             const obj = intersects[i].object;
-            // 忽略枪械本身和子弹网格
             if (obj !== this.weaponGroup && !this.bullets.some(b => b.mesh === obj) && obj !== this.muzzleFlash) {
                 hitPoint = intersects[i].point;
                 const normal = intersects[i].face ? intersects[i].face.normal : new THREE.Vector3(0,1,0);
-                this.particles.spawnImpact(hitPoint, normal); // 火花特效
+                if(this.particles) this.particles.spawnImpact(hitPoint, normal); 
                 break;
             }
         }
 
-        if (!hitPoint) hitPoint = raycaster.ray.at(100, new THREE.Vector3());
+        // 【核心修复：弹道追踪】确定子弹的最终目标点
+        const targetPos = hitPoint ? hitPoint : raycaster.ray.at(100, new THREE.Vector3());
 
-        // 发射一枚 3D 实体视觉子弹
+        // 发射一枚子弹，并让它朝向准星的目标点飞去
         let bullet = this.bullets.find(b => !b.active);
         if (bullet) {
             bullet.active = true;
-            bullet.life = 1.0; // 子弹存活 1 秒
+            bullet.life = 1.0; 
             bullet.mesh.visible = true;
             
-            // 从枪管末端射出
+            // 子弹从枪管出发
             this.barrel.getWorldPosition(bullet.mesh.position);
-            bullet.mesh.quaternion.copy(this.camera.quaternion);
+            bullet.mesh.lookAt(targetPos); // 枪头对准目标
             
-            // 设定子弹飞行速度 (150米/秒)
-            bullet.velocity.set(0, 0, -150).applyQuaternion(this.camera.quaternion); 
+            // 计算飞行方向向量并赋予超高速度 (200米/秒)
+            bullet.velocity.subVectors(targetPos, bullet.mesh.position).normalize().multiplyScalar(200); 
         }
 
-        // 将命中点返回给 main.js 去处理全局伤害！
+        // 触发命中高亮闪光
+        if (hitPoint) {
+            let flash = this.hitFlashes.find(f => f.life <= 0);
+            if (flash) {
+                flash.mesh.position.copy(hitPoint);
+                flash.mesh.scale.set(1, 1, 1);
+                flash.mesh.material.opacity = 1;
+                flash.mesh.visible = true;
+                flash.life = 0.15; // 闪光持续 0.15 秒
+            }
+        }
+
         return { point: hitPoint }; 
     }
 
