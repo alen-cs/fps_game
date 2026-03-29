@@ -61,7 +61,7 @@ export class Weapon {
             this.bullets.push({ mesh: mesh, active: false, velocity: new THREE.Vector3(), life: 0 });
         }
 
-        // --- 4. 击中火花特效池 (增强打击感) ---
+        // --- 4. 击中火花特效池 ---
         this.hitFlashes = [];
         const hitFlashGeo = new THREE.SphereGeometry(0.15, 8, 8);
         const hitFlashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
@@ -110,7 +110,6 @@ export class Weapon {
             this.muzzleFlash.material.opacity -= delta * 15;
         }
 
-        // 更新子弹飞行
         for (let b of this.bullets) {
             if (b.active) {
                 b.mesh.position.addScaledVector(b.velocity, delta);
@@ -122,12 +121,11 @@ export class Weapon {
             }
         }
 
-        // 更新击中火花特效
         for (let f of this.hitFlashes) {
             if (f.life > 0) {
                 f.life -= delta;
-                f.mesh.scale.addScalar(delta * 15); // 快速放大
-                f.mesh.material.opacity = f.life * 5; // 渐隐
+                f.mesh.scale.addScalar(delta * 15); 
+                f.mesh.material.opacity = f.life * 5; 
                 if (f.life <= 0) f.mesh.visible = false;
             }
         }
@@ -151,7 +149,6 @@ export class Weapon {
         this.muzzleFlash.material.opacity = 1;
         this.muzzleFlash.rotation.z = Math.random() * Math.PI; 
 
-        // 射线检测
         raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
         const intersects = raycaster.intersectObjects(this.scene.children, true);
         
@@ -166,25 +163,19 @@ export class Weapon {
             }
         }
 
-        // 【核心修复：弹道追踪】确定子弹的最终目标点
         const targetPos = hitPoint ? hitPoint : raycaster.ray.at(100, new THREE.Vector3());
 
-        // 发射一枚子弹，并让它朝向准星的目标点飞去
         let bullet = this.bullets.find(b => !b.active);
         if (bullet) {
             bullet.active = true;
             bullet.life = 1.0; 
             bullet.mesh.visible = true;
             
-            // 子弹从枪管出发
             this.barrel.getWorldPosition(bullet.mesh.position);
-            bullet.mesh.lookAt(targetPos); // 枪头对准目标
-            
-            // 计算飞行方向向量并赋予超高速度 (200米/秒)
+            bullet.mesh.lookAt(targetPos); 
             bullet.velocity.subVectors(targetPos, bullet.mesh.position).normalize().multiplyScalar(200); 
         }
 
-        // 触发命中高亮闪光
         if (hitPoint) {
             let flash = this.hitFlashes.find(f => f.life <= 0);
             if (flash) {
@@ -192,7 +183,7 @@ export class Weapon {
                 flash.mesh.scale.set(1, 1, 1);
                 flash.mesh.material.opacity = 1;
                 flash.mesh.visible = true;
-                flash.life = 0.15; // 闪光持续 0.15 秒
+                flash.life = 0.15; 
             }
         }
 
