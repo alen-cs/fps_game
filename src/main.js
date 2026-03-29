@@ -17,6 +17,9 @@ scene.fog = new THREE.FogExp2(0x0a0a0a, 0.03);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
+
+// 限制最高像素比，防止高分屏掉帧
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 document.body.appendChild(renderer.domElement); 
@@ -27,8 +30,16 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1);
 dirLight.position.set(20, 50, 20); 
 dirLight.castShadow = true; 
-dirLight.shadow.mapSize.width = 2048; 
-dirLight.shadow.mapSize.height = 2048;
+
+// 精确限制阴影截锥体范围
+dirLight.shadow.camera.left = -40;
+dirLight.shadow.camera.right = 40;
+dirLight.shadow.camera.top = 40;
+dirLight.shadow.camera.bottom = -40;
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 100;
+dirLight.shadow.mapSize.width = 1024; 
+dirLight.shadow.mapSize.height = 1024;
 scene.add(dirLight);
 
 const groundMat = new CANNON.Material();
@@ -98,7 +109,6 @@ let pickups = [];
 let currentWave = 0;
 let isWaveSpawning = false; 
 
-// UI 状态缓存，防止频繁操作 DOM 导致卡顿
 const uiCache = {
     stamina: -1,
     health: -1,
@@ -120,7 +130,6 @@ function handlePlayerDamage(amount) {
     
     playerHealth -= amount;
     
-    // 更新血条缓存
     const hpWidth = Math.max(0, playerHealth) + '%';
     if (uiCache.health !== hpWidth) {
         uiHealthFill.style.width = hpWidth;
@@ -230,7 +239,6 @@ function animate() {
         
         if (!isSprinting && stamina < 100) stamina = Math.min(100, stamina + delta * 15);
         
-        // 1. 体力条与冲刺 UI 优化：仅在值变化时更新 DOM
         const intStamina = Math.round(stamina);
         if (uiCache.stamina !== intStamina) {
             uiStaminaFill.style.width = intStamina + '%';
@@ -263,27 +271,34 @@ function animate() {
             }
         }
 
+        // 【核心修复】：手动计算距离平方，彻底解决 CANNON 与 THREE 的类型碰撞问题
         pickups.forEach(p => {
             p.update(delta);
-            if (!p.isCollected && playerBody.position.distanceToSquared(p.group.position) < 2.25) {
-                p.collect();
-                if (p.type === 'HEALTH') {
-                    playerHealth = Math.min(100, playerHealth + 40); 
-                    
-                    // 同样复用 UI 缓存更新
-                    const hpWidth = playerHealth + '%';
-                    if (uiCache.health !== hpWidth) {
-                        uiHealthFill.style.width = hpWidth;
-                        uiCache.health = hpWidth;
-                    }
+            if (!p.isCollected) {
+                const dx = playerBody.position.x - p.group.position.x;
+                const dy = playerBody.position.y - p.group.position.y;
+                const dz = playerBody.position.z - p.group.position.z;
+                const distSq = dx * dx + dy * dy + dz * dz;
 
-                    damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 255, 136, 0.5)";
-                    damageOverlayTimer = 0.3;
-                } else if (p.type === 'AMMO') {
-                    weapon.maxAmmo += 60; 
-                    weapon._updateAmmoUI(`${weapon.ammo} / ${weapon.maxAmmo}`); // 内部自带缓存
-                    damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 136, 255, 0.5)";
-                    damageOverlayTimer = 0.3;
+                if (distSq < 2.25) { // 距离小于 1.5 (1.5平方=2.25)
+                    p.collect();
+                    if (p.type === 'HEALTH') {
+                        playerHealth = Math.min(100, playerHealth + 40); 
+                        
+                        const hpWidth = playerHealth + '%';
+                        if (uiCache.health !== hpWidth) {
+                            uiHealthFill.style.width = hpWidth;
+                            uiCache.health = hpWidth;
+                        }
+
+                        damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 255, 136, 0.5)";
+                        damageOverlayTimer = 0.3;
+                    } else if (p.type === 'AMMO') {
+                        weapon.maxAmmo += 60; 
+                        weapon._updateAmmoUI(`${weapon.ammo} / ${weapon.maxAmmo}`); 
+                        damageOverlay.style.boxShadow = "inset 0 0 100px rgba(0, 136, 255, 0.5)";
+                        damageOverlayTimer = 0.3;
+                    }
                 }
             }
         });
@@ -294,7 +309,6 @@ function animate() {
         
         enemies.forEach(e => e.update(delta, playerBody.position, handlePlayerDamage)); 
         
-        // 2. 数组原地清理，彻底杜绝 GC 垃圾回收卡顿
         for (let i = pickups.length - 1; i >= 0; i--) {
             if (pickups[i].isCollected) pickups.splice(i, 1);
         }
@@ -303,7 +317,6 @@ function animate() {
             if (enemies[i].isDestroyed) enemies.splice(i, 1);
         }
 
-        // 3. 波次信息 UI 优化：防抖更新
         const aliveEnemies = enemies.filter(e => e.state !== 'DEAD').length;
         if (!isWaveSpawning) {
             const newWaveText = `WAVE ${currentWave} | ENEMIES: ${aliveEnemies}`;
@@ -319,6 +332,7 @@ function animate() {
         }
     }
 
+    // 只要循环不被报错中断，渲染器就能如丝般顺滑地更新画面
     renderer.render(scene, camera); 
 }
 
