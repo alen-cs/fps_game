@@ -7,7 +7,7 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; color: white; user-select: none; }
         /* 游戏 UI 样式 */
-        #instructions { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.7); cursor: pointer; z-index: 100;}
+        #instructions { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); cursor: pointer; z-index: 100;}
         #ui-layer { position: absolute; bottom: 20px; left: 20px; z-index: 10; font-family: monospace; font-size: 18px;}
         .bar-container { width: 250px; height: 15px; background: #222; border: 2px solid #555; margin-bottom: 10px;}
         .fill { height: 100%; transition: width 0.1s; }
@@ -17,11 +17,21 @@
         #wave-info { position: absolute; top: 20px; width: 100%; text-align: center; font-size: 24px; font-weight: bold; font-family: monospace; z-index: 10;}
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.8); font-size: 20px; pointer-events: none; z-index: 50;}
     </style>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
 </head>
 <body>
     <div id="damage-overlay"></div>
     <div id="crosshair">十</div>
-    <div id="wave-info">WAVE 1 - INCOMING...</div>
+    <div id="wave-info">SYSTEM INITIALIZING...</div>
     
     <div id="ui-layer">
         <div>HP</div>
@@ -32,8 +42,8 @@
 
     <div id="instructions">
         <div style="text-align: center;">
-            <h1 style="font-family: sans-serif;">CLICK TO START</h1>
-            <p>WASD: Move | SHIFT: Sprint | SPACE: Jump | MOUSE: Shoot</p>
+            <h1 style="font-family: sans-serif; font-size: 48px; margin-bottom: 10px;">CLICK TO START</h1>
+            <p style="font-size: 18px; color: #ccc;">WASD: Move | SHIFT: Sprint | SPACE: Jump | MOUSE: Shoot</p>
         </div>
     </div>
 
