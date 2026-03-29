@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web-FPS Pro: AI & Particles</title>
+    <title>Web-FPS Pro: OOP Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,19 +15,20 @@
         <div class="stamina-bar"><div id="stamina-fill"></div></div>
         <div class="ammo">30 / 120</div>
     </div>
+    <div id="wave-info">SYSTEM BOOTING...</div>
     <div id="instructions">
         <div class="glass-card">
             <h1>SYSTEM ONLINE</h1>
-            <p>Shift: 冲刺 | WASD: 移动 | 左键: 射击</p>
-            <p class="warning">检测到敌对目标，请立即点击授权作战</p>
+            <p>Shift: 冲刺 | WASD: 移动 | 左键: 射击 | R: 换弹</p>
+            <p class="warning">检测到多兵种敌对目标，请立即点击授权作战</p>
         </div>
     </div>
 
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
                 "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/+esm" 
             }
         }
