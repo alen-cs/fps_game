@@ -22,7 +22,6 @@ export class Weapon {
         this.weaponGroup.position.copy(this.basePosition);
         this.camera.add(this.weaponGroup);
 
-        // 枪口闪光
         this.muzzleFlash = new THREE.Mesh(
             new THREE.PlaneGeometry(0.4, 0.4),
             new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0, side: THREE.DoubleSide })
@@ -30,7 +29,6 @@ export class Weapon {
         this.muzzleFlash.position.set(0, 0.05, -0.7);
         this.weaponGroup.add(this.muzzleFlash);
 
-        // 子弹池
         this.bullets = [];
         for (let i = 0; i < 20; i++) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 1.2), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
@@ -38,7 +36,8 @@ export class Weapon {
             this.scene.add(mesh);
             this.bullets.push({ mesh: mesh, active: false, velocity: new THREE.Vector3(), life: 0 });
         }
-        this._updateUI();
+        // 延迟一丢丢执行，确保 DOM 树好了
+        setTimeout(() => this._updateUI(), 100);
     }
 
     _updateUI() {
@@ -54,7 +53,9 @@ export class Weapon {
                 if (b.life <= 0) { b.active = false; b.mesh.visible = false; }
             }
         });
-        if (this.muzzleFlash.material.opacity > 0) this.muzzleFlash.material.opacity -= delta * 20;
+        if (this.muzzleFlash && this.muzzleFlash.material.opacity > 0) {
+            this.muzzleFlash.material.opacity -= delta * 20;
+        }
         this.weaponGroup.position.lerp(this.basePosition, delta * 10);
     }
 
@@ -67,11 +68,9 @@ export class Weapon {
         this.ammo--;
         this._updateUI();
 
-        // 视觉反馈
         this.weaponGroup.position.z += 0.15;
         this.muzzleFlash.material.opacity = 1;
 
-        // 【精准弹道计算】
         raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
         const intersects = raycaster.intersectObjects(this.scene.children, true)
             .filter(i => !this.bullets.some(b => b.mesh === i.object) && i.object !== this.muzzleFlash);
@@ -82,7 +81,10 @@ export class Weapon {
         if (intersects.length > 0) {
             targetPoint.copy(intersects[0].point);
             hitObject = intersects[0].object;
-            if (this.particles) this.particles.spawnImpact(targetPoint, intersects[0].face.normal);
+            // 安全调用粒子
+            if (this.particles && typeof this.particles.spawnImpact === 'function') {
+                this.particles.spawnImpact(targetPoint, intersects[0].face.normal);
+            }
         } else {
             raycaster.ray.at(100, targetPoint);
         }
@@ -103,6 +105,8 @@ export class Weapon {
     reload() {
         if (this.isReloading || this.ammo === 30 || this.maxAmmo <= 0) return;
         this.isReloading = true;
+        const el = document.getElementById('ammo-info');
+        if(el) el.innerText = "RELOADING...";
         setTimeout(() => {
             const needed = 30 - this.ammo;
             const toReload = Math.min(needed, this.maxAmmo);
