@@ -22,8 +22,11 @@ export class Weapon {
         this.fireRate = 100;
 
         this.uiAmmo = document.querySelector('.ammo');
+        this.lastAmmoText = ""; // 缓存弹药 UI 文本
+
         this._tempHitDir = new THREE.Vector3();
         this._tempNormal = new THREE.Vector3();
+        this._centerScreen = new THREE.Vector2(0, 0); // 预分配屏幕中心坐标，避免每帧创建
 
         this._buildModel();
 
@@ -55,22 +58,28 @@ export class Weapon {
         this.group.add(body, barrel, scope);
     }
 
+    _updateAmmoUI(text, color) {
+        if (this.lastAmmoText !== text) {
+            this.uiAmmo.innerText = text;
+            this.lastAmmoText = text;
+        }
+        if (color) this.uiAmmo.style.color = color;
+    }
+
     reload() {
         if (this.isReloading || this.ammo === this.clipSize || this.maxAmmo <= 0) return;
         this.isReloading = true;
         this.reloadTimer = 0;
-        this.uiAmmo.innerText = `RELOADING...`;
-        this.uiAmmo.style.color = "#ffaa00";
+        this._updateAmmoUI(`RELOADING...`, "#ffaa00");
     }
 
     _finishReload() {
         this.isReloading = false;
-        this.uiAmmo.style.color = "#fff";
         const needed = this.clipSize - this.ammo;
         const toReload = Math.min(needed, this.maxAmmo);
         this.ammo += toReload;
         this.maxAmmo -= toReload;
-        this.uiAmmo.innerText = `${this.ammo} / ${this.maxAmmo}`;
+        this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`, "#fff");
     }
 
     update(delta, isMoving, isSprinting, mouseDelta) {
@@ -118,9 +127,10 @@ export class Weapon {
         this.ammo--;
         this.recoil = 0.12;
         this.flash.intensity = 15;
-        this.uiAmmo.innerText = `${this.ammo} / ${this.maxAmmo}`;
+        this._updateAmmoUI(`${this.ammo} / ${this.maxAmmo}`);
 
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+        // 使用复用的屏幕中心坐标，杜绝每次开火生成新的 Vector2
+        raycaster.setFromCamera(this._centerScreen, this.camera);
         raycaster.layers.set(0); 
         const hits = raycaster.intersectObjects(this.scene.children, true);
 
