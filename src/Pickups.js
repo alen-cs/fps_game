@@ -8,7 +8,7 @@ export class Pickup {
 
         this.group = new THREE.Group();
         this.group.position.copy(pos);
-        this.baseY = pos.y; // 记录生成时的坐标地形高度
+        this.baseY = pos.y; 
         this.scene.add(this.group);
 
         const color = type === 'HEALTH' ? 0x00ff88 : 0x0088ff;
@@ -37,7 +37,6 @@ export class Pickup {
         if (this.isCollected) return;
         this.time += delta;
 
-        // 浮动基准基于当前地形高度
         const floatY = Math.sin(this.time * 2) * 0.15;
         this.group.position.y = this.baseY + floatY;
 
