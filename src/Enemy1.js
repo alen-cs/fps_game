@@ -27,8 +27,8 @@ export class Enemy1 {
         dir.y = 0; dir.normalize();
         
         // 移速提升至 8 (原为 4)
-        this.body.velocity.x = dir.x * 8;
-        this.body.velocity.z = dir.z * 8;
+        this.body.velocity.x = dir.x * 6;
+        this.body.velocity.z = dir.z * 6;
     }
 
     takeDamage(amount) {
