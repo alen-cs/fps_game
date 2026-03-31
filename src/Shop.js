@@ -1,6 +1,6 @@
 export class Shop {
     constructor(player, weaponManager, controls) {
-        this.player = player; // 传入玩家状态引用 { points: 0 }
+        this.player = player; 
         this.weaponManager = weaponManager;
         this.controls = controls;
         this.isOpen = false;
@@ -21,7 +21,7 @@ export class Shop {
 
     open() {
         this.isOpen = true;
-        this.controls.unlock(); // 解除鼠标锁定以便点击
+        this.controls.unlock(); 
         this.render();
         this.container.style.display = 'block';
     }
@@ -29,7 +29,7 @@ export class Shop {
     close() {
         this.isOpen = false;
         this.container.style.display = 'none';
-        this.controls.lock(); // 重新锁定鼠标
+        this.controls.lock(); 
     }
 
     toggle() {
@@ -96,7 +96,6 @@ export class Shop {
         html += `</div>`;
         this.container.innerHTML = html;
 
-        // 绑定事件
         document.getElementById('buy-ammo-btn').onclick = () => this.buyAmmo();
         
         this.container.querySelectorAll('.buy-btn').forEach(btn => {
