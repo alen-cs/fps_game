@@ -10,7 +10,7 @@ import { Boss } from './Boss.js';
 import { Pickup } from './Pickups.js';
 import { Shop } from './Shop.js';
 
-// 导出高度公式供其他模块使用
+// ========== 1. 全局配置与地形 ==========
 export function getTerrainHeight(x, z) {
     const distFromCenter = Math.sqrt(x * x + z * z);
     if (distFromCenter > 40) {
@@ -19,12 +19,13 @@ export function getTerrainHeight(x, z) {
     return 0; 
 }
 
-// ========== 物理过滤器定义 ==========
+// 物理碰撞组（修复了之前的变量提升错误）
 const FILTER_PLAYER = 1;
 const FILTER_PLAYER_BULLET = 2;
 const FILTER_ENEMY = 4;
 const FILTER_ENEMY_BULLET = 8;
 const FILTER_GROUND = 16;
+const PICKUP_GROUP = 32;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050510);
@@ -60,15 +61,13 @@ const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
 terrainMesh.rotation.x = -Math.PI / 2;
 scene.add(terrainMesh);
 
-// 玩家物理更新：增加过滤器配置
+// ========== 2. 玩家与控制器 ==========
 const playerBody = new CANNON.Body({
     mass: 70, shape: new CANNON.Sphere(0.6), position: new CANNON.Vec3(0, 2, 0), fixedRotation: true, linearDamping: 0.9,
     collisionFilterGroup: FILTER_PLAYER,
-    collisionFilterMask: FILTER_ENEMY | FILTER_ENEMY_BULLET | FILTER_GROUND | PICKUP_GROUP // 能被敌人、敌人子弹撞击
+    collisionFilterMask: FILTER_ENEMY | FILTER_ENEMY_BULLET | FILTER_GROUND | PICKUP_GROUP
 });
 world.addBody(playerBody);
-
-const PICKUP_GROUP = 16; // 临时为了不报错
 
 const controls = new PointerLockControls(camera, document.body);
 const instructions = document.getElementById('instructions');
@@ -78,39 +77,38 @@ if (instructions) {
     controls.addEventListener('unlock', () => { if (!shop.isOpen) instructions.style.display = 'flex'; });
 }
 
-// ========== 玩家状态与核心对象 ==========
+// ========== 3. 游戏状态与核心模块 ==========
 let playerState = { health: 100, points: 0 }; 
-
 const particles = new ParticleSystem(scene);
 const weapon = new Weapon(camera, scene, particles);
 const shop = new Shop(playerState, weapon, controls);
 const raycaster = new THREE.Raycaster();
 
 let enemies = [];
-let pickups = [];
 let currentWave = 1;
-
 let keys = {};
+
+// 事件监听
 document.addEventListener('keydown', (e) => { 
     keys[e.code] = true; 
     if(e.code === 'KeyR') weapon.reload(); 
     if(e.code === 'KeyB') shop.toggle(); 
 });
 document.addEventListener('keyup', (e) => keys[e.code] = false);
-
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 let isMouseDown = false;
 document.addEventListener('mousedown', (e) => {
     if (shop.isOpen) return; 
     if (e.button === 2) { weapon.aim(true); } 
-    else if (e.button === 0 && controls.isLocked) { isMouseDown = true; handleShooting(); } // 允许单击
+    else if (e.button === 0 && controls.isLocked) { isMouseDown = true; handleShooting(); } 
 });
 document.addEventListener('mouseup', (e) => {
     if (e.button === 2) weapon.aim(false); 
     if (e.button === 0) isMouseDown = false;
 });
 
+// ========== 4. 核心逻辑 ==========
 function handleShooting() {
     if (!controls.isLocked) return;
     const result = weapon.fire(raycaster);
@@ -119,15 +117,14 @@ function handleShooting() {
         let hitAny = false;
         
         enemies.forEach(enemy => {
-            // 射线检测需要检查子物体
-            const isHit = object && (object === enemy.mesh || (enemy.group && enemy.group.children.includes(object)));
+            const isHit = object && (object === enemy.mesh || (enemy.group && enemy.group.children.includes(object)) || (enemy.turretGroup && enemy.turretGroup.children.includes(object)));
             
             if (isHit || enemy.mesh.position.distanceTo(point) < 2.5) {
                 const wasAlive = enemy.health > 0; 
                 enemy.takeDamage(damage); 
                 if (wasAlive && enemy.health <= 0) {
                     playerState.health = Math.min(100, playerState.health + 2); 
-                    playerState.points += 100; // 无人战车分更多
+                    playerState.points += 100; 
                     weapon.updateUI();
                     updateUIState();
                 }
@@ -159,7 +156,7 @@ function spawnWave() {
         const startY = getTerrainHeight(x, z) + 5; 
 
         if (currentWave >= 5 && i === 0) enemies.push(new Boss(scene, world, new THREE.Vector3(x, startY, z)));
-        else if (currentWave >= 1 && Math.random() > 0.4) enemies.push(new Enemy1(scene, world, new THREE.Vector3(x, startY, z))); // 提高无车战车出现率
+        else if (currentWave >= 1 && Math.random() > 0.4) enemies.push(new Enemy1(scene, world, new THREE.Vector3(x, startY, z)));
         else enemies.push(new Enemy2(scene, world, new THREE.Vector3(x, startY, z)));
     }
     updateUIState();
@@ -177,7 +174,7 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.1);
 
     if (controls.isLocked) {
-        // handleShooting(); // 移除连发逻辑，让其在 mousedown 触发
+        if (isMouseDown && weapon.arsenal[weapon.currentWeaponIndex].fireRate < 0.2) handleShooting(); // 处理全自动连发
         
         world.step(1/60, delta, 3);
         const playerGroundY = getTerrainHeight(playerBody.position.x, playerBody.position.z);
@@ -216,7 +213,6 @@ function animate() {
         weapon.update(delta);
         particles.update(delta);
         
-        // 用于距离判定的玩家标准坐标
         const playerPosThree = new THREE.Vector3(playerBody.position.x, playerBody.position.y, playerBody.position.z);
 
         enemies.forEach(enemy => {
@@ -228,23 +224,23 @@ function animate() {
 
             enemy.update(delta, playerPosThree); 
             
-            // 物理身体近战伤害 (战车压人)
+            // 战车压人判定
             if (enemy.group && enemy.group.position.distanceTo(playerPosThree) < 2.5) {
-                playerState.health = Math.max(0, playerState.health - delta * 30); // 战车压人很痛
+                playerState.health = Math.max(0, playerState.health - delta * 30);
                 updateUIState();
             }
 
-            // ========== 处理敌人子弹与玩家碰撞 ==========
+            // 处理敌人发射的子弹
             if (enemy.enemyBullets) {
                 enemy.enemyBullets.forEach(b => {
                     if (b.active) {
                         const bPos = new THREE.Vector3(b.body.position.x, b.body.position.y, b.body.position.z);
-                        if (bPos.distanceTo(playerPosThree) < 1.0) { // 碰撞半径
-                            playerState.health = Math.max(0, playerState.health - 15); // 等离子炮弹伤害
-                            b.active = false; // 子弹消失
+                        if (bPos.distanceTo(playerPosThree) < 1.0) { 
+                            playerState.health = Math.max(0, playerState.health - 15);
+                            b.active = false; 
                             b.mesh.visible = false;
                             b.body.position.set(0, -100, 0); 
-                            particles.spawnImpact(bPos, new THREE.Vector3(0,1,0)); // 玩家受击特效
+                            particles.spawnImpact(bPos, new THREE.Vector3(0,1,0)); 
                             updateUIState();
                         }
                     }
@@ -254,7 +250,10 @@ function animate() {
 
         enemies = enemies.filter(e => !e.isDestroyed);
         if (enemies.length === 0) { currentWave++; spawnWave(); }
-        if (playerState.health <= 0) { alert("游戏结束！按确定重开。"); location.reload(); }
+        if (playerState.health <= 0) { 
+            controls.unlock();
+            setTimeout(() => { alert("游戏结束！按确定重开。"); location.reload(); }, 100); 
+        }
         updateUIState();
     }
     renderer.render(scene, camera);
