@@ -6,7 +6,6 @@ export class Weapon {
         this.scene = scene;
         this.particles = particles;
 
-        // 武器库参数配置
         this.arsenal = [
             { name: '新兵电磁步枪', cost: 0, damage: 40, fireRate: 0.12, magSize: 30, color: 0x00ffff, scale: [1, 1, 1], zoom: 60 },
             { name: '地狱火冲锋枪', cost: 500, damage: 18, fireRate: 0.06, magSize: 50, color: 0xff0055, scale: [0.8, 0.8, 0.6], zoom: 65 },
@@ -15,14 +14,13 @@ export class Weapon {
             { name: '虚空微型机枪', cost: 5000, damage: 45, fireRate: 0.04, magSize: 100, color: 0xaa00ff, scale: [1.5, 1.5, 1.2], zoom: 55 }
         ];
 
-        this.unlockedWeapons = [0]; // 默认解锁第一把
+        this.unlockedWeapons = [0]; 
         this.currentWeaponIndex = 0;
-        this.maxAmmo = 120; // 通用备弹
+        this.maxAmmo = 120; 
         this.isReloading = false;
         this.lastFireTime = 0;
-        this.isAiming = false; // 开镜状态
+        this.isAiming = false; 
 
-        // 持枪姿态基准点
         this.hipPosition = new THREE.Vector3(0.25, -0.2, -0.5);
         this.adsPosition = new THREE.Vector3(0, -0.12, -0.4); 
 
@@ -42,7 +40,6 @@ export class Weapon {
     }
 
     buildWeaponModel() {
-        // 构建一个模块化枪身，后续通过 switchWeapon 动态调色调尺码
         this.weaponGroup.clear();
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.3 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.5), bodyMat);
@@ -63,7 +60,6 @@ export class Weapon {
         const config = this.arsenal[index];
         this.ammo = config.magSize;
         
-        // 动态改变武器外观
         this.coreMat.color.setHex(config.color);
         this.weaponGroup.scale.set(...config.scale);
         this.bullets.forEach(b => b.mesh.material.color.setHex(config.color));
@@ -78,7 +74,6 @@ export class Weapon {
     update(delta) {
         const config = this.arsenal[this.currentWeaponIndex];
         
-        // 1. 处理子弹飞行
         this.bullets.forEach(b => {
             if (b.active) {
                 b.mesh.position.addScaledVector(b.velocity, delta);
@@ -87,11 +82,9 @@ export class Weapon {
             }
         });
 
-        // 2. 平滑过渡开镜/腰射姿态 (Lerp)
         const targetPos = this.isAiming ? this.adsPosition : this.hipPosition;
         this.weaponGroup.position.lerp(targetPos, delta * 15);
         
-        // 3. 平滑过渡相机 FOV (开镜放大)
         const targetFOV = this.isAiming ? config.zoom : 75;
         this.camera.fov += (targetFOV - this.camera.fov) * delta * 15;
         this.camera.updateProjectionMatrix();
@@ -108,17 +101,14 @@ export class Weapon {
         this.ammo--;
         this.updateUI();
         
-        // 后坐力动画表现
         this.weaponGroup.position.z += this.isAiming ? 0.05 : 0.12;
         this.weaponGroup.rotation.x = 0.05;
         setTimeout(() => this.weaponGroup.rotation.x = 0, 50);
 
-        // 霰弹枪多弹片逻辑
         const bulletCount = config.bullets || 1;
         let mainHit = null;
 
         for (let i = 0; i < bulletCount; i++) {
-            // 霰弹散布，若是单发武器则不散布
             const spread = bulletCount > 1 ? (Math.random() - 0.5) * 0.1 : 0;
             const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
             dir.x += spread; dir.y += spread; dir.normalize();
@@ -144,7 +134,7 @@ export class Weapon {
                 b.velocity.subVectors(targetPoint, b.mesh.position).normalize().multiplyScalar(250);
             }
         }
-        return mainHit; // 返回击中信息和当前武器伤害供 main.js 扣血
+        return mainHit; 
     }
 
     reload() {
